@@ -21,6 +21,7 @@
     }
   },
   "imports": {
-    "@deno/kv-oauth": "jsr:@deno/kv-oauth@^0.11.0"
+    "@deno/kv-oauth": "jsr:@deno/kv-oauth@^0.11.0",
+    "@std/dotenv": "jsr:@std/dotenv@^0.218.2"
   }
 } 

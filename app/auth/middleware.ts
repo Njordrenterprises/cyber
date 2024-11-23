@@ -1,24 +1,18 @@
-import { Context } from '../types.ts';
-import { githubClient, googleClient, getSessionId } from './oauth.ts';
+import { getSessionId } from './oauth.ts';
+import { kv } from '../db.ts';
+import type { Context, Session } from '../types.ts';
 
 export async function authMiddleware(ctx: Context): Promise<void> {
   const sessionId = await getSessionId(ctx.request);
-  if (!sessionId) return;
+  
+  if (!sessionId) {
+    return;
+  }
 
-  try {
-    // Try GitHub first
-    const githubUser = await githubClient.getUser(sessionId);
-    if (githubUser) {
-      ctx.state.user = githubUser;
-      return;
-    }
+  const sessionResult = await kv.get<Session>(['sessions', sessionId]);
+  const session = sessionResult.value;
 
-    // Try Google if GitHub failed
-    const googleUser = await googleClient.getUser(sessionId);
-    if (googleUser) {
-      ctx.state.user = googleUser;
-    }
-  } catch (error) {
-    console.error('Auth middleware error:', error);
+  if (session) {
+    ctx.state.user = session.user;
   }
 } 

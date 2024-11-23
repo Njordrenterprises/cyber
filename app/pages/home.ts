@@ -12,7 +12,7 @@ export async function homeHandler(ctx: Context): Promise<Response> {
     .replace('{{ title }}', 'Counter Demo')
     .replace('{{ navigation }}', navigation)
     .replace('{{ content }}', content)
-    .replace('{{ styles }}', '<link rel="stylesheet" href="/styles/components/counter.css">');
+    .replace('{{ styles }}', '<link rel="stylesheet" href="/styles/components/counter/counter.css">');
   
   return new Response(html, {
     headers: {
