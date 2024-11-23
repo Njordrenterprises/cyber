@@ -1,7 +1,7 @@
 {
   "tasks": {
-    "dev": "deno run --watch --allow-net --allow-read --allow-env --unstable server.ts",
-    "start": "deno run --allow-net --allow-read --allow-env --unstable server.ts"
+    "dev": "deno run --watch --allow-net --allow-read --allow-env --unstable --unstable-kv server.ts",
+    "start": "deno run --allow-net --allow-read --allow-env --unstable --unstable-kv server.ts"
   },
   "compilerOptions": {
     "strict": true,
@@ -19,5 +19,8 @@
       "singleQuote": true,
       "proseWrap": "always"
     }
+  },
+  "imports": {
+    "@deno/kv-oauth": "jsr:@deno/kv-oauth@^0.11.0"
   }
 } 
