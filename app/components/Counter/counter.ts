@@ -73,9 +73,14 @@ export async function handleCounter(req: Request): Promise<Response> {
   // Handle WebSocket upgrade
   if (path.endsWith('/ws')) {
     const { socket, response } = Deno.upgradeWebSocket(req);
-    socket.onopen = () => {
+    
+    // Send initial count on connection
+    socket.onopen = async () => {
+      const count = await getCount();
+      socket.send(JSON.stringify({ count }));
       handleCounterSocket(socket);
     };
+    
     return response;
   }
 

@@ -8,11 +8,16 @@
   "compilerOptions": {
     "strict": true,
     "noImplicitAny": true,
-    "lib": ["deno.window", "deno.unstable"]
+    "lib": [
+      "deno.window",
+      "deno.unstable"
+    ]
   },
   "fmt": {
     "files": {
-      "include": ["**/*.ts"]
+      "include": [
+        "**/*.ts"
+      ]
     },
     "options": {
       "useTabs": false,
@@ -25,5 +30,13 @@
   "imports": {
     "@deno/kv-oauth": "jsr:@deno/kv-oauth@^0.11.0",
     "@std/dotenv": "jsr:@std/dotenv@^0.218.2"
+  },
+  "deploy": {
+    "project": "12141c19-81e7-4c36-bc33-5c1ddb41b3a8",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [],
+    "entrypoint": "server.ts"
   }
-} 
+}

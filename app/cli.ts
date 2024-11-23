@@ -1,5 +1,5 @@
 async function makeRequest(endpoint: string, method: 'GET' | 'POST' = 'GET'): Promise<Response> {
-    const baseUrl = 'http://localhost:8000';
+    const baseUrl = 'https://cyberframework.deno.dev';
     return await fetch(`${baseUrl}/api/v1${endpoint}`, { method });
   }
   
