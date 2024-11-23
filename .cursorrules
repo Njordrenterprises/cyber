@@ -1,5 +1,6 @@
 # Cyber Framework System Instructions
 Deno.serve is native!!!! DONT IMPORT ANYTHING FROM std/http/server.ts
+Deno Kv is native!!!! DONT IMPORT ANYTHING FROM std/kv/mod.ts this must function on in both local and Deploy environments
 ## Core Technology Stack
 - Runtime: Deno 2.0.6
 - Features: kv --unstable

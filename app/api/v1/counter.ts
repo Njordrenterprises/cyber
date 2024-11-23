@@ -1,4 +1,4 @@
-import { kv } from '../../db.ts';
+const kv = await Deno.openKv();
 
 interface CounterData {
   count: number;
