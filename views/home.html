@@ -3,40 +3,49 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cyber Framework - Counter Demo</title>
-  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
-  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <link rel="stylesheet" href="/styles/main.css">
+  <title>Cyber Framework</title>
+  <link rel="stylesheet" href="/styles/global/reset.css">
+  <link rel="stylesheet" href="/styles/global/variables.css">
+  <link rel="stylesheet" href="/styles/components/cards.css">
+  <link rel="stylesheet" href="/styles/components/buttons.css">
+  <link rel="stylesheet" href="/styles/components/headers.css">
+  <link rel="stylesheet" href="/styles/components/backgrounds.css">
+  <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
-<body>
-  <main>
-    <h1>Cyber Framework Counter Demo</h1>
-    
-    <!-- HTMX Counter -->
-    <section class="counter-section">
-      <h2>HTMX Counter</h2>
-      <div id="htmx-counter" hx-get="/api/counter" hx-trigger="load">
-        Loading...
-      </div>
-      <div class="counter-controls">
-        <button hx-post="/api/counter/increment" hx-target="#htmx-counter">+</button>
-        <button hx-post="/api/counter/decrement" hx-target="#htmx-counter">-</button>
-      </div>
-    </section>
+<body class="circuit-board">
+  <div class="cyberpunk-nav">
+    <!-- Nav will be injected here -->
+  </div>
+  
+  <main class="container">
+    <header class="cyberpunk-header">
+      <h1 class="cyberpunk-header-glitch">Cyber Framework</h1>
+      <p class="cyberpunk-header-neon">A hypermedia-driven framework for the future</p>
+    </header>
 
-    <!-- Alpine.js Counter -->
-    <section class="counter-section">
-      <h2>Alpine.js Counter</h2>
-      <div x-data="{ count: 0 }">
-        <div class="counter-display">
-          Count: <span x-text="count"></span>
-        </div>
-        <div class="counter-controls">
-          <button x-on:click="count++">+</button>
-          <button x-on:click="count--">-</button>
+    <div class="cyberpunk-cards-container cards-2">
+      <div class="cyberpunk-card neon">
+        <div class="cyberpunk-card-content">
+          <h2 class="cyberpunk-card-title">Neural Counter</h2>
+          <div id="counter" hx-get="/components/counter" hx-trigger="load">
+            <!-- Counter will be injected here -->
+          </div>
         </div>
       </div>
-    </section>
+
+      <div class="cyberpunk-card plasma">
+        <div class="cyberpunk-card-content">
+          <h2 class="cyberpunk-card-title">Features</h2>
+          <ul class="cyberpunk-card-description">
+            <li>🚀 Deno Runtime</li>
+            <li>⚡ HTMX Powered</li>
+            <li>🔒 Secure OAuth</li>
+            <li>📦 KV Storage</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </main>
 </body>
 </html> 

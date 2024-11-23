@@ -1,5 +1,5 @@
 /// <reference lib="deno.unstable" />
-import '@std/dotenv/load';
+import 'https://deno.land/std@0.224.0/dotenv/load.ts';
 import { handleRequest } from './app/router.ts';
 
 const port = 8000;

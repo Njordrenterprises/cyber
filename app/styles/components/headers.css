@@ -1,0 +1,143 @@
+.cyberpunk-header {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .cyberpunk-header-glitch {
+    color: var(--accent-primary);
+    font-size: 3rem;
+    text-shadow: 
+      0.05em 0 0 var(--accent-secondary),
+      -0.025em -0.05em 0 var(--neon-green),
+      0.025em 0.05em 0 var(--neon-orange);
+    animation: glitch 500ms infinite;
+  }
+  
+  .cyberpunk-header-neon {
+    font-size: 2.5rem;
+    color: var(--text-primary);
+    text-shadow: 
+      0 0 5px var(--accent-primary),
+      0 0 10px var(--accent-primary),
+      0 0 20px var(--accent-primary),
+      0 0 40px var(--accent-primary);
+    animation: flicker 1.5s infinite alternate;
+  }
+  
+  .cyberpunk-header-circuit {
+    font-size: 2.8rem;
+    color: var(--text-primary);
+    background: 
+      linear-gradient(90deg, var(--bg-secondary) 2px, transparent 2px) 0 0,
+      linear-gradient(0deg, var(--bg-secondary) 2px, transparent 2px) 0 0,
+      linear-gradient(var(--accent-primary) 1px, transparent 1px) 0 0,
+      linear-gradient(90deg, var(--accent-primary) 1px, transparent 1px) 0 0;
+    background-size: 50px 50px, 50px 50px, 10px 10px, 10px 10px;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    padding: 20px 10px;
+  }
+  
+  .cyberpunk-header-hologram {
+    font-size: 2.2rem;
+    color: var(--accent-secondary);
+    text-shadow: 
+      0 0 5px var(--accent-secondary),
+      0 0 10px var(--accent-secondary),
+      0 0 20px var(--accent-primary),
+      0 0 40px var(--accent-primary);
+    opacity: 0.8;
+    animation: hologram 2s ease-in-out infinite;
+  }
+  
+  @keyframes glitch {
+    0% {
+      text-shadow: 
+        0.05em 0 0 var(--accent-secondary),
+        -0.025em -0.05em 0 var(--neon-green),
+        0.025em 0.05em 0 var(--neon-orange);
+    }
+    14% {
+      text-shadow: 
+        0.05em 0 0 var(--accent-secondary),
+        -0.025em -0.05em 0 var(--neon-green),
+        0.025em 0.05em 0 var(--neon-orange);
+    }
+    15% {
+      text-shadow: 
+        -0.05em -0.025em 0 var(--accent-secondary),
+        0.025em 0.025em 0 var(--neon-green),
+        -0.05em -0.05em 0 var(--neon-orange);
+    }
+    49% {
+      text-shadow: 
+        -0.05em -0.025em 0 var(--accent-secondary),
+        0.025em 0.025em 0 var(--neon-green),
+        -0.05em -0.05em 0 var(--neon-orange);
+    }
+    50% {
+      text-shadow: 
+        0.025em 0.05em 0 var(--accent-secondary),
+        0.05em 0 0 var(--neon-green),
+        0 -0.05em 0 var(--neon-orange);
+    }
+    99% {
+      text-shadow: 
+        0.025em 0.05em 0 var(--accent-secondary),
+        0.05em 0 0 var(--neon-green),
+        0 -0.05em 0 var(--neon-orange);
+    }
+    100% {
+      text-shadow: 
+        -0.025em 0 0 var(--accent-secondary),
+        -0.025em -0.025em 0 var(--neon-green),
+        -0.025em -0.05em 0 var(--neon-orange);
+    }
+  }
+  
+  @keyframes flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+      text-shadow: 
+        0 0 5px var(--accent-primary),
+        0 0 10px var(--accent-primary),
+        0 0 20px var(--accent-primary),
+        0 0 40px var(--accent-primary);
+    }
+    20%, 24%, 55% {
+      text-shadow: none;
+    }
+  }
+  
+  @keyframes hologram {
+    0%, 100% {
+      opacity: 0.8;
+      transform: translateY(0);
+    }
+    50% {
+      opacity: 1;
+      transform: translateY(-5px);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .cyberpunk-header-glitch {
+      font-size: 2.5rem;
+    }
+    .cyberpunk-header-neon {
+      font-size: 2rem;
+    }
+    .cyberpunk-header-circuit {
+      font-size: 2.3rem;
+    }
+    .cyberpunk-header-hologram {
+      font-size: 1.8rem;
+    }
+  }
+  
+  

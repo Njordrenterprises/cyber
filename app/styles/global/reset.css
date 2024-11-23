@@ -5,7 +5,14 @@
 }
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  color: var(--text-color);
-  background-color: var(--background-color);
+  font-family: var(--font-display);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+ul {
+  list-style-position: inside;
+  margin-bottom: 1rem;
 } 

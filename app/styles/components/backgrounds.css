@@ -1,0 +1,144 @@
+.cyberpunk-background {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+  }
+  
+  /* Neon Grid */
+  .neon-grid {
+    background-color: #000;
+    background-image: 
+      linear-gradient(var(--accent-primary) 1px, transparent 1px),
+      linear-gradient(90deg, var(--accent-primary) 1px, transparent 1px);
+    background-size: 20px 20px;
+    animation: gridPulse 2s infinite;
+  }
+  
+  @keyframes gridPulse {
+    0% {
+      background-color: #000;
+    }
+    50% {
+      background-color: #001;
+    }
+    100% {
+      background-color: #000;
+    }
+  }
+  
+  /* Digital Rain */
+  .digital-rain {
+    background-color: #000;
+    position: relative;
+  }
+  
+  .digital-rain::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    right: -50%;
+    bottom: -50%;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      var(--accent-primary) 100%
+    );
+    background-size: 50px 50px;
+    animation: digitalRain 5s linear infinite;
+    opacity: 0.2;
+  }
+  
+  @keyframes digitalRain {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(50%);
+    }
+  }
+  
+  /* Glitch City */
+  .glitch-city {
+    background-color: #000;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect fill="%23111" width="50" height="50" x="0" y="0"/><rect fill="%23111" width="50" height="50" x="50" y="50"/></svg>');
+    background-size: 100px 100px;
+    animation: glitchEffect 0.2s infinite;
+  }
+  
+  @keyframes glitchEffect {
+    0% {
+      background-position: 0 0;
+    }
+    20% {
+      background-position: -5px 0;
+    }
+    40% {
+      background-position: 5px 0;
+    }
+    60% {
+      background-position: 0 -5px;
+    }
+    80% {
+      background-position: 0 5px;
+    }
+    100% {
+      background-position: 0 0;
+    }
+  }
+  
+  /* Holographic Waves */
+  .holographic-waves {
+    background: linear-gradient(45deg, var(--accent-primary), var(--accent-secondary));
+    position: relative;
+  }
+  
+  .holographic-waves::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(255, 255, 255, 0.1) 10px,
+      rgba(255, 255, 255, 0.1) 20px
+    );
+    animation: holographicWaves 10s linear infinite;
+  }
+  
+  @keyframes holographicWaves {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 50px 50px;
+    }
+  }
+  
+  /* Circuit Board */
+  .circuit-board {
+    background-color: #000;
+    background-image: 
+      radial-gradient(var(--accent-primary) 2px, transparent 2px),
+      linear-gradient(var(--accent-secondary) 1px, transparent 1px),
+      linear-gradient(90deg, var(--accent-secondary) 1px, transparent 1px);
+    background-size: 50px 50px, 25px 25px, 25px 25px;
+    background-position: 0 0, 12.5px 12.5px, 12.5px 12.5px;
+    animation: circuitPulse 4s infinite;
+  }
+  
+  @keyframes circuitPulse {
+    0%, 100% {
+      opacity: 0.8;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  
+  

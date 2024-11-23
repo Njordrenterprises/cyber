@@ -1,7 +1,10 @@
 :root {
-  --primary-color: #2563eb;
-  --background-color: #ffffff;
-  --text-color: #1f2937;
-  --border-color: #e5e7eb;
+  --font-display: 'Orbitron', sans-serif;
+  --bg-primary: #000000;
+  --bg-secondary: #111111;
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --accent-primary: var(--neon-blue);
+  --accent-secondary: var(--neon-green);
   --spacing-unit: 0.25rem;
 } 

@@ -1,13 +1,87 @@
-.btn {
-  padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 6);
-  font-size: 1.25rem;
-  background-color: var(--primary-color);
-  color: white;
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+.cyberpunk-button {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  padding: 1rem 2rem;
   border: none;
-  border-radius: calc(var(--spacing-unit));
   cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.btn:hover {
-  opacity: 0.9;
-} 
+.hacker {
+  background-color: transparent;
+  color: #00f3ff;
+  border: 2px solid #00f3ff;
+  box-shadow: 0 0 10px #00f3ff;
+}
+
+.neural {
+  background-color: #000;
+  color: #ff00ff;
+  border: 2px solid #ff00ff;
+}
+
+.decrypt {
+  background-color: #000;
+  color: #39ff14;
+  border: 2px solid #39ff14;
+  box-shadow: 0 0 10px #39ff14;
+}
+
+.ai {
+  background: linear-gradient(45deg, #ffff00, #ff6600);
+  color: #000;
+  border: none;
+}
+
+.firewall {
+  background-color: #000;
+  color: #9d00ff;
+  border: 2px solid #9d00ff;
+  box-shadow: 0 0 10px #9d00ff;
+}
+
+.upload {
+  background-color: #000;
+  color: #fff;
+  border: 2px solid #fff;
+}
+
+.cyberpunk-button.active {
+  background-color: currentColor;
+  color: #000;
+}
+
+.cyberpunk-button.clicked {
+  transform: scale(0.95);
+  transition: transform 0.1s;
+}
+
+.cyberpunk-buttons-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background-color: #111;
+}
+
+.button {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #007acc;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.button:hover {
+  background-color: #005f99;
+}
+

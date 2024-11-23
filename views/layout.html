@@ -3,16 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ title }}</title>
-  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.3/dist/htmx.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <link rel="stylesheet" href="/styles/main.css">
-  {{ styles }}
+  <title>${title}</title>
+  
+  <!-- Global styles -->
+  <link rel="stylesheet" href="/styles/global/reset.css">
+  <link rel="stylesheet" href="/styles/global/variables.css">
+  
+  <!-- Component styles -->
+  <link rel="stylesheet" href="/styles/components/cards.css">
+  <link rel="stylesheet" href="/styles/components/buttons.css">
+  <link rel="stylesheet" href="/styles/components/headers.css">
+  <link rel="stylesheet" href="/styles/components/backgrounds.css">
+  <link rel="stylesheet" href="/styles/components/counter.css">
+  
+  <!-- HTMX and Alpine.js -->
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
 <body>
-  {{ navigation }}
-  <main>
-    {{ content }}
-  </main>
+  ${children}
 </body>
 </html> 

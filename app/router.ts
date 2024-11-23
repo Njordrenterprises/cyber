@@ -1,12 +1,8 @@
-import { homeHandler } from './pages/home.ts';
 import { authMiddleware } from './auth/middleware.ts';
-import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter.ts';
-import { 
-  handleCallback, 
-  signIn, 
-  signOut 
-} from './auth/oauth.ts';
+import { handleCallback, signIn, signOut } from './auth/oauth.ts';
 import { renderLoginPage } from './components/auth/login.ts';
+import { handleCounter } from './components/Counter/counter.ts';
+import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter.ts';
 
 export async function handleRequest(req: Request): Promise<Response> {
   const ctx = {
@@ -18,71 +14,50 @@ export async function handleRequest(req: Request): Promise<Response> {
     await authMiddleware(ctx);
     
     const url = new URL(req.url);
-    
+    const path = url.pathname;
+
     // Static file handling
-    if (url.pathname.startsWith('/styles/')) {
+    if (path.startsWith('/styles/')) {
       try {
-        // Try component-local CSS first
-        const componentPath = url.pathname.replace('/styles/components/', '/components/');
-        let file: Uint8Array;
-        
-        try {
-          file = await Deno.readFile(`./app${componentPath}`);
-        } catch {
-          // Fallback to styles directory
-          file = await Deno.readFile(`./app${url.pathname}`);
-        }
-        
-        const contentType = url.pathname.endsWith('.css') ? 'text/css' : 'text/plain';
+        const file = await Deno.readFile(`./app${path}`);
         return new Response(file, {
           headers: { 
-            'Content-Type': contentType,
+            'Content-Type': 'text/css',
             'Cache-Control': 'public, max-age=3600'
           },
         });
-      } catch (error) {
-        console.error(`File not found: ${url.pathname}`, error);
+      } catch {
         return new Response('Not Found', { status: 404 });
       }
     }
 
-    // Auth routes handling with provider specification
-    if (url.pathname.startsWith('/auth/')) {
-      const segments = url.pathname.split('/');
-      
-      // Handle generic login route
-      if (segments[1] === 'auth' && segments[2] === 'login') {
-        return new Response(await renderLoginPage(), {
-          headers: { 'Content-Type': 'text/html' },
-        });
-      }
+    // Home route - serve template
+    if (path === '/') {
+      const html = await Deno.readFile('./views/home.html');
+      return new Response(new TextDecoder().decode(html), {
+        headers: { 'Content-Type': 'text/html' },
+      });
+    }
 
-      // Handle provider-specific routes
-      const provider = segments[2];
-      if (segments[3] === 'signin') {
-        return await signIn(provider, req);
-      }
-      if (segments[3] === 'callback') {
-        return await handleCallback(provider, req);
-      }
-      if (segments[3] === 'signout') {
-        return await signOut(req);
+    // API v1 Routes - JSON endpoints
+    if (path.startsWith('/api/v1/counter')) {
+      if (req.method === 'GET') {
+        return await getCounter();
+      } else if (req.method === 'POST') {
+        if (path.endsWith('/increment')) {
+          return await incrementCounter();
+        } else if (path.endsWith('/decrement')) {
+          return await decrementCounter();
+        }
       }
     }
 
-    // API and page routing
-    switch (url.pathname) {
-      case '/':
-        return await homeHandler(ctx);
-      case '/api/v1/counter':
-        return getCounter();
-      case '/api/v1/counter/increment':
-        return incrementCounter();
-      case '/api/v1/counter/decrement':
-        return decrementCounter();
-      default:
-        return new Response('Not Found', { status: 404 });
+    // Component Routes - Hypermedia endpoints
+    if (path.startsWith('/components/counter')) {
+      return await handleCounter(req);
     }
+
+    return new Response('Not Found', { status: 404 });
   } catch (err) {
     console.error(err);
     return new Response('Internal Server Error', { status: 500 });
