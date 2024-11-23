@@ -1,4 +1,4 @@
-// Initialize KV store for both local and Deploy environments
+// Initialize KV store
 const kv = await Deno.openKv();
 
 interface CounterData {
@@ -27,18 +27,18 @@ async function decrementCount(): Promise<number> {
 function renderCounterHtml(count: number): string {
   return `
     <div class="counter-component">
-      <div id="counter" class="counter-display glow-text">
+      <div id="counter-value" class="counter-display glow-text">
         ${count}
       </div>
       <div class="counter-controls">
         <button class="cyberpunk-button decrypt" 
                 hx-post="/components/counter/increment" 
-                hx-target="#counter">
+                hx-target="#counter-value">
           INCREMENT
         </button>
         <button class="cyberpunk-button firewall" 
                 hx-post="/components/counter/decrement" 
-                hx-target="#counter">
+                hx-target="#counter-value">
           DECREMENT
         </button>
       </div>
@@ -46,25 +46,53 @@ function renderCounterHtml(count: number): string {
   `;
 }
 
+// WebSocket handler for counter updates
+async function handleCounterSocket(socket: WebSocket) {
+  const stream = kv.watch([['counter']]);
+  
+  try {
+    for await (const [entry] of stream) {
+      if (!entry.value) continue;
+      const count = (entry.value as CounterData).count;
+      socket.send(JSON.stringify({ count }));
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name !== 'AbortError') {
+      console.error('WebSocket error:', error);
+    }
+  } finally {
+    stream.cancel();
+  }
+}
+
 // Handle component requests
 export async function handleCounter(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
-
-  let count: number;
-
-  if (req.method === 'POST') {
-    if (path.endsWith('/increment')) {
-      count = await incrementCount();
-    } else if (path.endsWith('/decrement')) {
-      count = await decrementCount();
-    } else {
-      return new Response('Not Found', { status: 404 });
-    }
-  } else {
-    count = await getCount();
+  
+  // Handle WebSocket upgrade
+  if (path.endsWith('/ws')) {
+    const { socket, response } = Deno.upgradeWebSocket(req);
+    socket.onopen = () => {
+      handleCounterSocket(socket);
+    };
+    return response;
   }
 
+  // Handle increment/decrement
+  if (req.method === 'POST') {
+    if (path.endsWith('/increment')) {
+      const count = await incrementCount();
+      return new Response(count.toString());
+    } 
+    if (path.endsWith('/decrement')) {
+      const count = await decrementCount();
+      return new Response(count.toString());
+    }
+  }
+
+  // Handle initial render
+  const count = await getCount();
   return new Response(renderCounterHtml(count), {
     headers: { 'Content-Type': 'text/html' },
   });

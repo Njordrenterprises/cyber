@@ -10,7 +10,8 @@
   <link rel="stylesheet" href="/styles/components/buttons.css">
   <link rel="stylesheet" href="/styles/components/headers.css">
   <link rel="stylesheet" href="/styles/components/backgrounds.css">
-  <script src="https://unpkg.com/htmx.org@2.0.3" defer></script>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
   <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
 <body class="circuit-board">
@@ -28,8 +29,35 @@
       <div class="cyberpunk-card neon">
         <div class="cyberpunk-card-content">
           <h2 class="cyberpunk-card-title">Neural Counter</h2>
-          <div id="counter" hx-get="/components/counter" hx-trigger="load">
-            <!-- Counter will be injected here -->
+          <div id="counter-container" 
+               x-data="{ 
+                 count: 0,
+                 socket: null,
+                 init() {
+                   this.socket = new WebSocket(`ws://${window.location.host}/components/counter/ws`);
+                   this.socket.onmessage = (event) => {
+                     const data = JSON.parse(event.data);
+                     this.count = data.count;
+                   };
+                 }
+               }">
+            <div class="counter-component">
+              <div id="counter-value" class="counter-display glow-text" x-text="count">
+                0
+              </div>
+              <div class="counter-controls">
+                <button class="cyberpunk-button decrypt" 
+                        hx-post="/components/counter/increment" 
+                        hx-target="#counter-value">
+                  INCREMENT
+                </button>
+                <button class="cyberpunk-button firewall" 
+                        hx-post="/components/counter/decrement" 
+                        hx-target="#counter-value">
+                  DECREMENT
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
