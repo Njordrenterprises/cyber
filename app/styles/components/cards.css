@@ -1,0 +1,6 @@
+.card {
+  margin: calc(var(--spacing-unit) * 8) 0;
+  padding: calc(var(--spacing-unit) * 8);
+  border: 1px solid var(--border-color);
+  border-radius: calc(var(--spacing-unit) * 2);
+} 

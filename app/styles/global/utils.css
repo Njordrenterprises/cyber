@@ -1,0 +1,9 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: calc(var(--spacing-unit) * 8);
+}
+
+.text-center {
+  text-align: center;
+} 

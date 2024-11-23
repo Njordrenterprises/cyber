@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyber Framework - Counter Demo</title>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <link rel="stylesheet" href="/styles/main.css">
+</head>
+<body>
+  <main>
+    <h1>Cyber Framework Counter Demo</h1>
+    
+    <!-- HTMX Counter -->
+    <section class="counter-section">
+      <h2>HTMX Counter</h2>
+      <div id="htmx-counter" hx-get="/api/counter" hx-trigger="load">
+        Loading...
+      </div>
+      <div class="counter-controls">
+        <button hx-post="/api/counter/increment" hx-target="#htmx-counter">+</button>
+        <button hx-post="/api/counter/decrement" hx-target="#htmx-counter">-</button>
+      </div>
+    </section>
+
+    <!-- Alpine.js Counter -->
+    <section class="counter-section">
+      <h2>Alpine.js Counter</h2>
+      <div x-data="{ count: 0 }">
+        <div class="counter-display">
+          Count: <span x-text="count"></span>
+        </div>
+        <div class="counter-controls">
+          <button x-on:click="count++">+</button>
+          <button x-on:click="count--">-</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html> 

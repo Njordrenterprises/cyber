@@ -1,0 +1,13 @@
+.btn {
+  padding: calc(var(--spacing-unit) * 2) calc(var(--spacing-unit) * 6);
+  font-size: 1.25rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: calc(var(--spacing-unit));
+  cursor: pointer;
+}
+
+.btn:hover {
+  opacity: 0.9;
+} 

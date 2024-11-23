@@ -1,0 +1,14 @@
+.counter-component {
+  text-align: center;
+}
+
+.counter-display {
+  font-size: 2rem;
+  margin: calc(var(--spacing-unit) * 4) 0;
+}
+
+.counter-controls {
+  display: flex;
+  gap: calc(var(--spacing-unit) * 4);
+  justify-content: center;
+} 
