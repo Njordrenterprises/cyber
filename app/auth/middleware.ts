@@ -1,8 +1,15 @@
 /// <reference lib="deno.unstable" />
 
 import type { Context, User } from '../types.ts';
+import { getSessionId } from '@deno/kv-oauth';
 
 const kv = await Deno.openKv();
+
+interface Session {
+  userId: string;
+  created: number;
+  expires: number;
+}
 
 async function storeOrUpdateUser(user: User): Promise<void> {
   const userKey = ['users', user.id];
@@ -16,12 +23,12 @@ async function storeOrUpdateUser(user: User): Promise<void> {
 }
 
 export async function authMiddleware(ctx: Context): Promise<void | Response> {
+  let userId: string | undefined;
+
+  // Check for Bearer token (CLI)
   const authHeader = ctx.request.headers.get('Authorization');
-
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ')) {
     const accessToken = authHeader.slice('Bearer '.length);
-
-    // Validate the access token with GitHub
     const userResponse = await fetch('https://api.github.com/user', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -38,27 +45,34 @@ export async function authMiddleware(ctx: Context): Promise<void | Response> {
         provider: 'github',
         providerId: userData.id.toString(),
       };
-      
-      // Store or update user in KV
       await storeOrUpdateUser(user);
-      
-      // Add user to context
       ctx.state.user = user;
-      
-      // Add user ID to headers for downstream handlers
-      const headers = new Headers(ctx.request.headers);
-      headers.set('X-User-ID', user.id);
-      
-      // Create new request with updated headers
-      ctx.request = new Request(ctx.request.url, {
-        method: ctx.request.method,
-        headers,
-        body: ctx.request.body
-      });
-      
-      return;
+      userId = user.id;
+    }
+  } 
+  // Check for session (Web UI)
+  else {
+    const sessionId = await getSessionId(ctx.request);
+    if (sessionId) {
+      const session = await kv.get<Session>(['sessions', sessionId]);
+      if (session.value) {
+        userId = session.value.userId;
+      }
     }
   }
 
-  return new Response('Unauthorized', { status: 401 });
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
+  // Add user ID to headers for downstream handlers
+  const headers = new Headers(ctx.request.headers);
+  headers.set('X-User-ID', userId);
+  
+  // Create new request with updated headers
+  ctx.request = new Request(ctx.request.url, {
+    method: ctx.request.method,
+    headers,
+    body: ctx.request.body
+  });
 } 

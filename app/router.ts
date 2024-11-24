@@ -66,11 +66,20 @@ export async function handleRequest(req: Request): Promise<Response> {
     }
 
     // Handle auth routes
-    if (path.startsWith('/auth/')) {
+    if (path.startsWith('/auth/') || path.startsWith('/api/auth/')) {
       const segments = path.split('/');
       const provider = segments[2];
       const action = segments[3];
 
+      // Handle device flow endpoints
+      if (path === '/api/auth/google/device') {
+        return await initiateGoogleDeviceFlowHandler(req);
+      }
+      if (path === '/api/auth/google/token') {
+        return await pollGoogleTokenHandler(req);
+      }
+
+      // Handle regular OAuth flow
       if (['github', 'google'].includes(provider)) {
         return await handleAuthRequest(req, provider, action);
       }
@@ -135,12 +144,6 @@ export async function handleRequest(req: Request): Promise<Response> {
     case '/components/counter/decrement':
     case '/components/counter':
       return await handleCounter(req);
-
-    case '/api/auth/google/device':
-      return await initiateGoogleDeviceFlowHandler(req);
-
-    case '/api/auth/google/token':
-      return await pollGoogleTokenHandler(req);
   }
 
   return new Response('Not Found', { status: 404 });
