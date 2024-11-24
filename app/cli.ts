@@ -1,4 +1,5 @@
 import type { AuthResponse } from './types.ts';
+import { load } from "@std/dotenv";
 
 const BASE_URL = 'http://localhost:8000';
 let isAuthenticated = false;
@@ -67,6 +68,18 @@ async function handleCounter() {
 }
 
 async function handleAuth(): Promise<boolean> {
+  await load({ export: true });
+  
+  await import("./auth/providers/github.ts");
+  await import("./auth/providers/google.ts");
+  
+  console.log('Auth Environment Check:', {
+    GITHUB_CLIENT_ID: Deno.env.get("GITHUB_CLIENT_ID")?.slice(0, 5) + '...',
+    hasSecret: !!Deno.env.get("GITHUB_CLIENT_SECRET"),
+    OAUTH_GITHUB_CLIENT_ID: Deno.env.get("OAUTH_GITHUB_CLIENT_ID")?.slice(0, 5) + '...',
+    hasOAuthSecret: !!Deno.env.get("OAUTH_GITHUB_CLIENT_SECRET")
+  });
+
   while (true) {
     showAuthMenu();
     const choice = prompt('\nSelect option (0-2): ');
@@ -200,6 +213,4 @@ async function main() {
   }
 }
 
-if (import.meta.main) {
-  main();
-}
+await main();

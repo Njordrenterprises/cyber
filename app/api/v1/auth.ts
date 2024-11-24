@@ -14,6 +14,11 @@ export async function handleAuthRequest(
 
     switch (action) {
       case 'signin':
+        console.log('Auth Request:', {
+          provider,
+          clientId: Deno.env.get("GITHUB_CLIENT_ID"),
+          hasSecret: !!Deno.env.get("GITHUB_CLIENT_SECRET")
+        });
         response = await signIn(provider, req);
         break;
       case 'callback':

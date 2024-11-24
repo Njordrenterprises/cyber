@@ -8,9 +8,11 @@ import {
 } from "@deno/kv-oauth";
 
 import { github } from "./providers/github.ts";
+import { google } from "./providers/google.ts";
 
 const providers: Record<string, OAuth2ClientConfig> = {
   github,
+  google,
 };
 
 // Type-safe wrapper for signIn
@@ -20,12 +22,9 @@ async function handleSignIn(provider: string, request: Request): Promise<Respons
     return new Response('Invalid provider', { status: 400 });
   }
 
-  const options: SignInOptions = {
-    urlParams: {
-      redirect_uri: new URL(request.url).origin + `/auth/${provider}/callback`
-    }
-  };
-  return await kvoSignIn(request, config, options);
+  console.log(`Signing in with ${provider}, Client ID:`, Deno.env.get(`OAUTH_${provider.toUpperCase()}_CLIENT_ID`));
+
+  return await kvoSignIn(request, config);
 }
 
 // Wrap handleCallback to handle the response
