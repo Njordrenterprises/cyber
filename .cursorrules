@@ -1,9 +1,12 @@
 # Cyber Framework System Instructions
-Deno.serve is native!!!! DONT IMPORT ANYTHING FROM std/http/server.ts
-Deno Kv is native!!!! DONT IMPORT ANYTHING FROM std/kv/mod.ts this must function on in both local and Deploy environments
+
+## Important Notes
+- **Deno.serve is native!** Do not import anything from `std/http/server.ts`.
+- **Deno KV is native!** Do not import anything from `std/kv/mod.ts`. This must function in both local and Deploy environments.
+
 ## Core Technology Stack
 - Runtime: Deno 2.0.6
-- Features: kv --unstable
+- Features: Deno KV (`--unstable` flag is required)
 - Core Libraries:
   - HTMX: 2.0.3
   - Alpine.js: 3.x
@@ -12,113 +15,169 @@ Deno Kv is native!!!! DONT IMPORT ANYTHING FROM std/kv/mod.ts this must function
 You are an expert Deno developer specializing in hypermedia-driven applications using HTMX, Alpine.js, and Deno KV OAuth for secure state management.
 
 ## Core Principles
-- Write concise, native Deno TypeScript code
-- Use hypermedia patterns over client-side JavaScript
-- Maintain locality of behavior in components
-- Leverage Deno KV for data persistence and session management
-- Implement KV OAuth security best practices by default
-- Use HTMX for dynamic updates
-- Use Alpine.js for lightweight interactivity
+- Write concise, native Deno TypeScript code.
+- Use hypermedia patterns over client-side JavaScript.
+- Maintain locality of behavior in components.
+- Leverage Deno KV for data persistence and session management.
+- Implement KV OAuth security best practices by default.
+- Use HTMX for dynamic updates.
+- Use Alpine.js for lightweight interactivity.
 
 ## KV OAuth Structure
-- Sessions: [sessions, userId, timestamp]
-- States: [oauth-states, state, timestamp]
-- Users: [users, provider, providerId]
+- Sessions: `[sessions, userId, timestamp]`
+- States: `[oauth-states, state, timestamp]`
+- Users: `[users, provider, providerId]`
 
 ## Project Structure
+```
 /
 ├── app/
-│   ├── auth/          # OAuth providers
-│   ├── pages/         # Page handlers
-│   ├── api/           # REST endpoints
+│   ├── api/           # REST API endpoints
+│   │   └── v1/
+│   │       └── counter.ts     # Counter API endpoints
+│   ├── auth/          # Authentication logic
+│   │   ├── middleware.ts     # Authentication middleware
+│   │   ├── oauth.ts          # OAuth handling
+│   │   └── providers/        # OAuth provider configurations
+│   │       ├── github.ts
+│   │       └── google.ts
 │   ├── components/    # UI components
-│   └── styles/        # CSS files
-├── public/            # Static assets
+│   │   ├── auth/
+│   │   │   └── login.ts      # Login component
+│   │   ├── Counter/
+│   │   │   ├── counter.ts    # Counter component logic
+│   │   │   └── counter.css   # Counter component styles
+│   │   └── nav/
+│   │       ├── nav.ts        # Navigation component
+│   │       └── nav.css       # Navigation styles
+│   ├── styles/        # Global and component styles
+│   │   ├── components/
+│   │   │   ├── backgrounds.css
+│   │   │   ├── buttons.css
+│   │   │   ├── cards.css
+│   │   │   ├── headers.css
+│   │   └── global/
+│   │       ├── reset.css
+│   │       ├── utils.css
+│   │       └── variables.css
+│   ├── db.ts          # Database (Deno KV) initialization
+│   ├── router.ts      # Main request router
+│   ├── types.ts       # TypeScript type definitions
+│   └── cli.ts         # Command-line interface script
+├── public/            # Static assets (if any)
 ├── views/             # HTML templates
-├── deno.json         # Config file
-└── server.ts         # Entry point
+│   ├── home.html      # Home page template
+│   └── layout.html    # Layout template
+├── deno.json          # Deno configuration file
+├── .env               # Environment variables (not committed)
+└── main.ts          # Entry point of the application
+```
 
 ## Development Rules
-- Always use native Deno APIs over third-party modules
-- Co-locate related code (HTML, CSS, behavior) in component directories
-- Use KV OAuth for authentication flows
-- Implement PKCE flow for security
-- Store sessions in KV with proper expiration
-- Handle OAuth state verification
-- Implement proper session cleanup
-- Use semantic HTML elements
-- Write self-documenting code with clear naming
-- Keep components small and focused
-- Ensure proper TypeScript types
-- Follow OAuth security best practices
-- Include error handling
-- Write performant code
+- Always use native Deno APIs over third-party modules.
+- **Do not import from `std/http/server.ts` or `std/kv/mod.ts`.**
+- Co-locate related code (HTML, CSS, TypeScript) in component directories.
+- Use KV OAuth for authentication flows.
+- Implement PKCE flow for security.
+- Store sessions in Deno KV with proper expiration.
+- Handle OAuth state verification.
+- Implement proper session cleanup.
+- Use semantic HTML elements.
+- Write self-documenting code with clear naming.
+- Keep components small and focused.
+- Ensure proper TypeScript types.
+- Follow OAuth security best practices.
+- Include error handling.
+- Write performant code.
 
 ## IDE Settings
-- Quotes: single
-- Indent: 2
-- Max Line Length: 80
-- TypeScript:
-  - strict: true
-  - noImplicitAny: true
+- **Quotes**: single
+- **Indent**: 2 spaces
+- **Max Line Length**: 80 characters
+- **TypeScript**:
+  - `strict`: true
+  - `noImplicitAny`: true
 
 ## OAuth Configuration
-- Session Duration: 7d
-- State Duration: 10m
-- Secure: true
-- SameSite: Lax
+- **Session Duration**: 7 days
+- **State Duration**: 10 minutes
+- **Secure**: true
+- **SameSite**: Lax
 
 ## Naming Conventions
-- Components: PascalCase
-- Pages: camelCase
-- API: kebab-case
-- Styles: kebab-case
+- **Components**: PascalCase
+- **Pages**: camelCase
+- **API**: kebab-case
+- **Styles**: kebab-case
 
 ## File Extensions
-- TypeScript: .ts
-- Styles: .css
-- Templates: .html
+- **TypeScript**: `.ts`
+- **Styles**: `.css`
+- **Templates**: `.html`
 
 ## Development Commands
-json
+```json:deno.json
 {
-"tasks": {
-"dev": "deno run --watch --allow-net --allow-read server.ts",
-"start": "deno run --allow-net --allow-read server.ts"
+  "tasks": {
+    "dev": "deno run --watch --allow-net --allow-read --allow-env --unstable --unstable-kv main.ts",
+    "start": "deno run --allow-net --allow-read --allow-env --unstable --unstable-kv main.ts",
+    "cli": "deno run --allow-net --allow-read --allow-env --unstable --unstable-kv app/cli.ts",
+    "cli:dev": "deno run --watch --allow-net --allow-read --allow-env --unstable --unstable-kv app/cli.ts"
+  }
 }
-}
-
+```
 
 ## Prohibited Practices
-- Build steps or bundlers
-- Client-side routing
-- Complex state management
-- External dependencies when Deno stdlib suffices
-- Framework abstractions
-- jQuery or similar libraries
-- Custom session implementations
-- Manual OAuth flows
-- Client-side OAuth state management
-- Session storage outside of KV
+- Build steps or bundlers.
+- Client-side routing.
+- Complex state management.
+- External dependencies when Deno's standard library suffices.
+- Framework abstractions.
+- jQuery or similar libraries.
+- Custom session implementations.
+- Manual OAuth flows.
+- Client-side OAuth state management.
+- Session storage outside of Deno KV.
 
 ## Component Structure
 Each component must:
-- Have its own directory
-- Co-locate related code (TS, CSS)
-- Follow hypermedia patterns
-- Use HTMX for updates
-- Implement Alpine.js for interactivity
+- Have its own directory.
+- Co-locate related code (`.ts`, `.css`) in component directories.
+- Follow hypermedia patterns.
+- Use HTMX for updates.
+- Implement Alpine.js for interactivity.
 
 ## Performance Guidelines
-- Minimize client-side JavaScript
-- Use native Deno features
-- Implement proper caching
-- Optimize KV queries
-- Follow HTMX best practices
+- Minimize client-side JavaScript.
+- Use native Deno features.
+- Implement proper caching.
+- Optimize Deno KV queries.
+- Follow HTMX best practices.
 
 ## Documentation Requirements
-- Clear component documentation
-- Type definitions
-- Security considerations
-- Usage examples
-- API documentation
+- Clear component documentation.
+- Type definitions.
+- Security considerations.
+- Usage examples.
+- API documentation.
+
+## How It All Works Together
+- **Server Initialization**:
+  - The application starts with `main.ts`, which uses `Deno.serve` to listen for incoming HTTP requests.
+  - **Important**: Do not import anything from `std/http/server.ts`; use `Deno.serve` instead.
+- **Request Routing**:
+  - Handled by `app/router.ts`, directing requests to appropriate handlers.
+- **Authentication Flow**:
+  - Managed using OAuth configurations in `app/auth/providers/`, utilizing Deno KV OAuth.
+- **State Management and Persistence**:
+  - Deno KV is employed for data persistence, including sessions and application data.
+  - **Important**: Do not import anything from `std/kv/mod.ts`; use Deno KV's native APIs.
+- **Components and Hypermedia**:
+  - Components are server-rendered and use HTMX for dynamic interactions.
+  - Alpine.js provides lightweight client-side interactivity when necessary.
+- **Real-Time Updates**:
+  - Implemented using WebSockets and server-sent events for components like the Counter.
+- **Styling and Theming**:
+  - Uses CSS files for styling, emphasizing a cyberpunk aesthetic through CSS variables and responsive design.
+
+These instructions aim to facilitate development with AI by providing clear guidelines based on the project's structure and best practices.

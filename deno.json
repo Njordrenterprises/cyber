@@ -1,7 +1,7 @@
 {
   "tasks": {
-    "dev": "deno run --watch --allow-net --allow-read --allow-env --unstable --unstable-kv server.ts",
-    "start": "deno run --allow-net --allow-read --allow-env --unstable --unstable-kv server.ts",
+    "dev": "deno run --watch --allow-net --allow-read --allow-env --unstable --unstable-kv main.ts",
+    "start": "deno run --allow-net --allow-read --allow-env --unstable --unstable-kv main.ts",
     "cli": "deno run --allow-net --allow-read --allow-env --unstable --unstable-kv app/cli.ts",
     "cli:dev": "deno run --watch --allow-net --allow-read --allow-env --unstable --unstable-kv app/cli.ts"
   },
@@ -9,8 +9,8 @@
     "strict": true,
     "noImplicitAny": true,
     "lib": [
-      "deno.window",
-      "deno.unstable"
+      "deno.unstable",
+      "deno.window"
     ]
   },
   "fmt": {
@@ -37,6 +37,6 @@
       "**/node_modules"
     ],
     "include": [],
-    "entrypoint": "server.ts"
+    "entrypoint": "main.ts"
   }
 }
