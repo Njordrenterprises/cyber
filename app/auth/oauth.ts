@@ -7,6 +7,7 @@ import {
 
 import { github } from "./providers/github.ts";
 import { google } from "./providers/google.ts";
+import { storeOrUpdateUser } from './middleware.ts';
 
 const providers: Record<string, OAuth2ClientConfig> = {
   github,
@@ -32,8 +33,53 @@ export async function handleOAuthCallback(provider: string, request: Request): P
     return new Response('Invalid provider', { status: 400 });
   }
 
-  const { response } = await kvoHandleCallback(request, config);
-  return response;
+  try {
+    const { response, sessionId, tokens } = await kvoHandleCallback(request, config);
+    
+    // Get user info from the OAuth provider
+    const userResponse = await fetch(
+      provider === 'github' 
+        ? 'https://api.github.com/user'
+        : 'https://www.googleapis.com/oauth2/v2/userinfo',
+      {
+        headers: {
+          'Authorization': `Bearer ${tokens.accessToken}`,
+          'Accept': 'application/json',
+        },
+      }
+    );
+
+    if (!userResponse.ok) {
+      throw new Error('Failed to fetch user data');
+    }
+
+    const userData = await userResponse.json();
+    
+    // Create user object
+    const user = {
+      id: provider === 'github' ? userData.id.toString() : userData.sub,
+      name: userData.name || userData.login,
+      email: userData.email || '',
+      provider,
+      providerId: provider === 'github' ? userData.id.toString() : userData.sub,
+    };
+
+    // Store session in KV
+    const kv = await Deno.openKv();
+    await kv.set(['sessions', sessionId], {
+      user,
+      created: Date.now(),
+      expires: Date.now() + (7 * 24 * 60 * 60 * 1000), // 7 days
+    });
+
+    // Store or update user
+    await storeOrUpdateUser(user);
+
+    return response;
+  } catch (error) {
+    console.error('OAuth callback error:', error);
+    return new Response('Authentication failed', { status: 500 });
+  }
 }
 
 // Handle signout

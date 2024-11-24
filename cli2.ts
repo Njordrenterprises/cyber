@@ -214,47 +214,68 @@ function showMainMenu() {
 }
 
 async function handleCounter(tokenData: TokenData) {
-  while (true) {
-    const response = await makeAuthRequest('/counter', 'GET', undefined, tokenData);
-    if (!response.ok) {
-      console.error('Failed to fetch counter');
-      return;
-    }
-    const data = await response.json();
-    
-    console.log('\n⚡ Counter API');
-    console.log('============');
-    console.log('Current count:', data.count);
-    console.log('\nOperations:');
-    console.log('1. Increment');
-    console.log('2. Decrement');
-    console.log('0. Back to main menu');
+  console.log('\n⚡ Counter API');
+  console.log('============');
+  console.log('Connecting to counter...');
 
+  const wsUrl = `wss://cyberclock.ca/components/counter/ws`;
+  const socket = new WebSocket(wsUrl);
+  let currentCount = 0;
+
+  socket.onopen = () => {
+    console.log('Connected to counter service');
+    // Send authentication token
+    socket.send(JSON.stringify({ token: tokenData.token }));
+  };
+
+  socket.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      currentCount = data.count;
+      console.clear();
+      console.log('\n⚡ Counter API');
+      console.log('============');
+      console.log('Current count:', currentCount);
+      console.log('\nOperations:');
+      console.log('1. Increment');
+      console.log('2. Decrement');
+      console.log('0. Back to main menu');
+    } catch (error) {
+      console.error('Failed to parse WebSocket message:', error);
+    }
+  };
+
+  socket.onerror = (error) => {
+    console.error('WebSocket error:', error);
+  };
+
+  socket.onclose = () => {
+    console.log('Disconnected from counter service');
+  };
+
+  // Handle user input
+  while (true) {
     const choice = prompt('\nSelect operation (0-2): ');
 
     switch (choice) {
       case '1': {
         const response = await makeAuthRequest('/counter/increment', 'POST', undefined, tokenData);
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Counter incremented. New value:', data.count);
-        } else {
+        if (!response.ok) {
           console.error('Failed to increment counter');
         }
         break;
       }
       case '2': {
         const response = await makeAuthRequest('/counter/decrement', 'POST', undefined, tokenData);
-        if (response.ok) {
-          const data = await response.json();
-          console.log('Counter decremented. New value:', data.count);
-        } else {
+        if (!response.ok) {
           console.error('Failed to decrement counter');
         }
         break;
       }
-      case '0':
+      case '0': {
+        socket.close();
         return;
+      }
       default:
         console.log('Invalid selection. Please try again.');
     }
@@ -387,21 +408,5 @@ async function main() {
 // Start the program
 if (import.meta.main) {
   main().catch(console.error);
-}
-
-async function getCounter(token: string): Promise<number> {
-  const response = await fetch(`${BASE_URL}/components/counter/ws`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json'
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to get counter: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.count;
 }
 
