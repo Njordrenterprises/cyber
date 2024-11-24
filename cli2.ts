@@ -99,7 +99,15 @@ async function initiateGoogleDeviceFlow(): Promise<{
     throw new Error(`Error initiating device flow: ${errorText}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+
+  return {
+    device_code: data.device_code,
+    user_code: data.user_code,
+    verification_uri: data.verification_url,
+    expires_in: data.expires_in,
+    interval: data.interval,
+  };
 }
 
 async function pollGoogleToken(deviceCode: string, interval: number): Promise<{
