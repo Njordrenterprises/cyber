@@ -3,6 +3,7 @@ import { renderLoginPage } from './components/auth/login.ts';
 import { handleCounter } from './components/Counter/counter.ts';
 import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter.ts';
 import { handleAuthRequest } from './api/v1/auth.ts';
+import { initiateGoogleDeviceFlowHandler, pollGoogleTokenHandler } from './auth/deviceFlow.ts';
 
 export async function handleRequest(req: Request): Promise<Response> {
   const ctx = {
@@ -78,6 +79,15 @@ export async function handleRequest(req: Request): Promise<Response> {
     // Component Routes - Hypermedia endpoints
     if (path.startsWith('/components/counter')) {
       return await handleCounter(req);
+    }
+
+    // Device Flow Routes
+    if (path.startsWith('/api/auth/google/device')) {
+      return await initiateGoogleDeviceFlowHandler(req);
+    }
+
+    if (path.startsWith('/api/auth/google/token')) {
+      return await pollGoogleTokenHandler(req);
     }
 
     return new Response('Not Found', { status: 404 });

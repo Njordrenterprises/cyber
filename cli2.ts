@@ -1,7 +1,5 @@
 const BASE_URL = 'https://cyberclock.ca';
 const GITHUB_CLIENT_ID = 'Ov23lisA7NFRFBKKqvmi';  // Updated to your actual Client ID
-let isAuthenticated = false;
-let accessToken: string | undefined;
 
 interface AuthResponse {
   success: boolean;
@@ -84,19 +82,75 @@ async function pollForToken(deviceCode: string, interval: number): Promise<{
   }
 }
 
+async function initiateGoogleDeviceFlow(): Promise<{
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  expires_in: number;
+  interval: number;
+}> {
+  const response = await fetch(`${BASE_URL}/api/auth/google/device`, {
+    method: 'POST',
+    headers: { 'Accept': 'application/json' },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error initiating device flow: ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+async function pollGoogleToken(deviceCode: string, interval: number): Promise<{
+  access_token: string;
+  token_type: string;
+  scope: string;
+}> {
+  while (true) {
+    await new Promise((resolve) => setTimeout(resolve, interval * 1000));
+
+    const response = await fetch(`${BASE_URL}/api/auth/google/token`, {
+      method: 'POST',
+      headers: { 
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ device_code: deviceCode }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Error polling for token: ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      if (data.error === 'authorization_pending' || data.error === 'slow_down') {
+        continue;
+      }
+      throw new Error(data.error_description || data.error);
+    }
+
+    return data;
+  }
+}
+
 // Update makeAuthRequest to include the access token
 async function makeAuthRequest(
   endpoint: string,
   method: 'GET' | 'POST' = 'GET',
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
+  token?: string
 ): Promise<Response> {
   const headers: Record<string, string> = {
     'Accept': 'application/json',
     'User-Agent': 'CyberClock-CLI/1.0',
   };
 
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const url = new URL(`${BASE_URL}/api/v1${endpoint}`);
@@ -123,9 +177,9 @@ function showMainMenu() {
   console.log('0. Exit');
 }
 
-async function handleCounter() {
+async function handleCounter(token: string) {
   while (true) {
-    const response = await makeAuthRequest('/counter');
+    const response = await makeAuthRequest('/counter', 'GET', undefined, token);
     if (!response.ok) {
       console.error('Failed to fetch counter');
       return;
@@ -144,7 +198,7 @@ async function handleCounter() {
 
     switch (choice) {
       case '1': {
-        const response = await makeAuthRequest('/counter/increment', 'POST');
+        const response = await makeAuthRequest('/counter/increment', 'POST', undefined, token);
         if (response.ok) {
           const { count } = await response.json();
           console.log('Counter incremented. New value:', count);
@@ -152,7 +206,7 @@ async function handleCounter() {
         break;
       }
       case '2': {
-        const response = await makeAuthRequest('/counter/decrement', 'POST');
+        const response = await makeAuthRequest('/counter/decrement', 'POST', undefined, token);
         if (response.ok) {
           const { count } = await response.json();
           console.log('Counter decremented. New value:', count);
@@ -167,9 +221,9 @@ async function handleCounter() {
   }
 }
 
-async function handleSignOut(): Promise<boolean> {
+async function handleSignOut(token: string): Promise<boolean> {
   try {
-    const response = await makeAuthRequest('/auth/signout', 'POST');
+    const response = await makeAuthRequest('/auth/signout', 'POST', undefined, token);
     const data = await response.json() as AuthResponse;
     if (data.success) {
       console.log('✅ Signed out successfully');
@@ -185,11 +239,36 @@ async function handleSignOut(): Promise<boolean> {
 }
 
 async function main() {
+  let isAuthenticated = false;
+  let accessToken: string | undefined;
+
   while (true) {
     if (!isAuthenticated) {
       try {
-        console.log('Initiating device authorization flow with GitHub...');
-        const deviceData = await initiateDeviceFlow();
+        console.log('\n🔐 Choose Authentication Provider');
+        console.log('==============================');
+        console.log('1. GitHub');
+        console.log('2. Google');
+        console.log('0. Exit');
+
+        const choice = prompt('\nSelect provider (0-2): ');
+
+        if (choice === '0') {
+          console.log('Goodbye! 👋');
+          Deno.exit(0);
+        }
+
+        if (choice !== '1' && choice !== '2') {
+          console.log('Invalid selection. Please try again.');
+          continue;
+        }
+
+        const isGitHub = choice === '1';
+        console.log(`Initiating device authorization flow with ${isGitHub ? 'GitHub' : 'Google'}...`);
+
+        const deviceData = isGitHub ? 
+          await initiateDeviceFlow() : 
+          await initiateGoogleDeviceFlow();
 
         console.log('\n🔑 Authentication Required');
         console.log('=========================');
@@ -199,10 +278,18 @@ async function main() {
         console.log('3. Authorize the application');
         console.log('Waiting for authorization...');
 
-        const tokenData = await pollForToken(deviceData.device_code, deviceData.interval);
+        const tokenData = isGitHub ?
+          await pollForToken(deviceData.device_code, deviceData.interval) :
+          await pollGoogleToken(deviceData.device_code, deviceData.interval);
+
+        isAuthenticated = true;
         accessToken = tokenData.access_token;
 
-        const userResponse = await fetch('https://api.github.com/user', {
+        const userEndpoint = isGitHub ? 
+          'https://api.github.com/user' : 
+          'https://www.googleapis.com/oauth2/v2/userinfo';
+
+        const userResponse = await fetch(userEndpoint, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Accept': 'application/json',
@@ -215,26 +302,25 @@ async function main() {
 
         const userData = await userResponse.json();
         console.log(`Welcome, ${userData.login}!`);
-        isAuthenticated = true;
       } catch (error) {
         console.error('Authentication error:', error instanceof Error ? error.message : 'Unknown error');
         Deno.exit(1);
       }
-      continue;
     }
 
     showMainMenu();
-    const choice = prompt('\nSelect API (0-2): ');
+    const menuChoice = prompt('\nSelect API (0-2): ');
 
-    switch (choice) {
+    switch (menuChoice) {
       case '1': {
-        await handleCounter();
+        await handleCounter(accessToken!);
         break;
       }
       case '2': {
-        if (await handleSignOut()) {
+        if (await handleSignOut(accessToken!)) {
           isAuthenticated = false;
           accessToken = undefined;
+          continue;
         }
         break;
       }
@@ -250,8 +336,8 @@ async function main() {
     }
   }
 }
-
 // Start the program
 if (import.meta.main) {
   main().catch(console.error);
 }
+

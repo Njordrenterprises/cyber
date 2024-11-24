@@ -4,22 +4,33 @@ import { load } from "@std/dotenv";
 // Load environment variables
 await load({ export: true });
 
-// Get the Google credentials
-const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
-const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+// Get the Google credentials for web
+const webClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+const webClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
 
-if (!clientId || !clientSecret) {
-  throw new Error("Google OAuth credentials not configured");
+// Get the Google credentials for device flow
+const deviceClientId = Deno.env.get("GOOGLE_DEVICE_CLIENT_ID");
+const deviceClientSecret = Deno.env.get("GOOGLE_DEVICE_CLIENT_SECRET");
+
+if (!webClientId || !webClientSecret) {
+  throw new Error("Google OAuth web credentials not configured");
 }
 
-// Set OAuth-prefixed variables for kv-oauth
-Deno.env.set("OAUTH_GOOGLE_CLIENT_ID", clientId);
-Deno.env.set("OAUTH_GOOGLE_CLIENT_SECRET", clientSecret);
+if (!deviceClientId || !deviceClientSecret) {
+  throw new Error("Google OAuth device credentials not configured");
+}
 
-console.log('OAUTH_GOOGLE_CLIENT_ID set to:', Deno.env.get("OAUTH_GOOGLE_CLIENT_ID"));
-console.log('OAUTH_GOOGLE_CLIENT_SECRET set to:', Deno.env.get("OAUTH_GOOGLE_CLIENT_SECRET"));
+// Set OAuth-prefixed variables for kv-oauth (web flow)
+Deno.env.set("OAUTH_GOOGLE_CLIENT_ID", webClientId);
+Deno.env.set("OAUTH_GOOGLE_CLIENT_SECRET", webClientSecret);
 
-// Create and export the Google OAuth config with only valid properties
+// Export device flow credentials
+export const deviceConfig = {
+  clientId: deviceClientId,
+  clientSecret: deviceClientSecret,
+};
+
+// Create and export the Google OAuth config for web
 export const google = createGoogleOAuthConfig({
   redirectUri: "https://cyberclock.ca/auth/google/callback",
   scope: [
