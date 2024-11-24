@@ -64,12 +64,14 @@ async function handleCounterSocket(socket: WebSocket, userId: string) {
     for await (const [entry] of stream) {
       if (!entry.value) continue;
       const count = (entry.value as CounterData).count;
-      socket.send(JSON.stringify({ count }));
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ count }));
+      } else {
+        break;
+      }
     }
   } catch (error) {
-    if (error instanceof Error && error.name !== 'AbortError') {
-      console.error('WebSocket error:', error);
-    }
+    console.error('WebSocket stream error:', error);
   } finally {
     stream.cancel();
   }
@@ -87,33 +89,63 @@ export async function handleCounter(req: Request): Promise<Response> {
   
   // Handle WebSocket upgrade
   if (path.endsWith('/ws')) {
-    const { socket, response } = Deno.upgradeWebSocket(req);
-    
-    // Send initial count on connection
-    socket.onopen = async () => {
-      const count = await getCount(userId);
-      socket.send(JSON.stringify({ count }));
-      handleCounterSocket(socket, userId);
-    };
-    
-    return response;
+    try {
+      const { socket, response } = Deno.upgradeWebSocket(req);
+      
+      // Set up error handling
+      socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+      // Set up close handling
+      socket.onclose = () => {
+        console.log('WebSocket closed for user:', userId);
+      };
+
+      // Send initial count on connection
+      socket.onopen = async () => {
+        try {
+          const count = await getCount(userId);
+          socket.send(JSON.stringify({ count }));
+          await handleCounterSocket(socket, userId);
+        } catch (error) {
+          console.error('Error in WebSocket open handler:', error);
+          socket.close();
+        }
+      };
+      
+      return response;
+    } catch (error) {
+      console.error('WebSocket upgrade error:', error);
+      return new Response('WebSocket upgrade failed', { status: 500 });
+    }
   }
 
   // Handle increment/decrement
   if (req.method === 'POST') {
-    if (path.endsWith('/increment')) {
-      const count = await incrementCount(userId);
-      return new Response(count.toString());
-    } 
-    if (path.endsWith('/decrement')) {
-      const count = await decrementCount(userId);
-      return new Response(count.toString());
+    try {
+      if (path.endsWith('/increment')) {
+        const count = await incrementCount(userId);
+        return new Response(count.toString());
+      } 
+      if (path.endsWith('/decrement')) {
+        const count = await decrementCount(userId);
+        return new Response(count.toString());
+      }
+    } catch (error) {
+      console.error('Counter operation error:', error);
+      return new Response('Operation failed', { status: 500 });
     }
   }
 
   // Handle initial render
-  const count = await getCount(userId);
-  return new Response(renderCounterHtml(count), {
-    headers: { 'Content-Type': 'text/html' },
-  });
+  try {
+    const count = await getCount(userId);
+    return new Response(renderCounterHtml(count), {
+      headers: { 'Content-Type': 'text/html' },
+    });
+  } catch (error) {
+    console.error('Counter render error:', error);
+    return new Response('Failed to render counter', { status: 500 });
+  }
 } 

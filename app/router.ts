@@ -130,6 +130,9 @@ export async function handleRequest(req: Request): Promise<Response> {
       break;
     }
 
+    case '/components/counter/ws':
+    case '/components/counter/increment':
+    case '/components/counter/decrement':
     case '/components/counter':
       return await handleCounter(req);
 

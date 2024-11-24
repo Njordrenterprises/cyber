@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="/styles/components/buttons.css">
   <link rel="stylesheet" href="/styles/components/headers.css">
   <link rel="stylesheet" href="/styles/components/backgrounds.css">
-  <link rel="stylesheet" href="/styles/components/auth/login.css">
   <script src="https://unpkg.com/htmx.org@2.0.3"></script>
   <script src="https://unpkg.com/htmx.org/dist/ext/sse.js"></script>
   <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
@@ -34,7 +33,11 @@
                x-data="{ 
                  count: 0,
                  socket: null,
-                 init() {
+                 reconnectAttempts: 0,
+                 maxReconnectAttempts: 5,
+                 reconnectDelay: 1000,
+
+                 connect() {
                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                    const wsUrl = `${protocol}//${window.location.host}/components/counter/ws`;
                    this.socket = new WebSocket(wsUrl);
@@ -45,9 +48,19 @@
                    };
 
                    this.socket.onclose = () => {
-                     // Attempt to reconnect after a delay
-                     setTimeout(() => this.init(), 1000);
+                     if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                       this.reconnectAttempts++;
+                       setTimeout(() => this.connect(), this.reconnectDelay * this.reconnectAttempts);
+                     }
                    };
+
+                   this.socket.onerror = (error) => {
+                     console.error('WebSocket error:', error);
+                   };
+                 },
+
+                 init() {
+                   this.connect();
                  }
                }">
             <div class="counter-component">
