@@ -4,43 +4,38 @@ import { handleCounter } from './components/Counter/counter.ts';
 import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter.ts';
 import { handleAuthRequest } from './api/v1/auth.ts';
 import { initiateGoogleDeviceFlowHandler, pollGoogleTokenHandler } from './auth/deviceFlow.ts';
+import { getSessionId } from '@deno/kv-oauth';
+
+function renderFullPage(content: string) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyberClock - Login</title>
+  <link rel="stylesheet" href="/styles/global/reset.css">
+  <link rel="stylesheet" href="/styles/global/variables.css">
+  <link rel="stylesheet" href="/styles/components/cards.css">
+  <link rel="stylesheet" href="/styles/components/buttons.css">
+  <link rel="stylesheet" href="/styles/components/headers.css">
+  <link rel="stylesheet" href="/styles/components/backgrounds.css">
+  <link rel="stylesheet" href="/components/auth/login.css">
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="circuit-board">
+  ${content}
+</body>
+</html>`;
+}
 
 export async function handleRequest(req: Request): Promise<Response> {
-  const ctx = {
-    request: req,
-    state: {},
-  };
+  const url = new URL(req.url);
+  const path = url.pathname;
 
-  try {
-    await authMiddleware(ctx);
-    
-    const url = new URL(req.url);
-    const path = url.pathname;
-
-    // Auth routes
-    if (path.startsWith('/auth/') || path.startsWith('/api/v1/auth/')) {
-      const segments = path.split('/');
-      const isApi = segments[1] === 'api';
-      const provider = isApi ? segments[4] : segments[2];
-      const action = isApi ? segments[5] : segments[3];
-
-      if (['github', 'google'].includes(provider)) {
-        if (['signin', 'callback', 'signout'].includes(action)) {
-          return await handleAuthRequest(req, provider, action);
-        }
-      }
-
-      // Handle login page for hypermedia requests
-      if (!isApi && action === 'login') {
-        return new Response(renderLoginPage(), {
-          headers: { 'Content-Type': 'text/html' },
-        });
-      }
-
-      return new Response('Invalid auth request', { status: 400 });
-    }
-
-    // Static file handling
+  // Allow static assets and auth routes without authentication
+  if (path.startsWith('/styles/') || path.startsWith('/auth/') || path === '/login') {
+    // Handle static files
     if (path.startsWith('/styles/')) {
       try {
         const file = await Deno.readFile(`./app${path}`);
@@ -55,44 +50,76 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
-    // Home route - serve template
-    if (path === '/') {
-      const html = await Deno.readFile('./views/home.html');
-      return new Response(new TextDecoder().decode(html), {
-        headers: { 'Content-Type': 'text/html' },
-      });
-    }
+    // Handle auth routes
+    if (path.startsWith('/auth/')) {
+      const segments = path.split('/');
+      const provider = segments[2];
+      const action = segments[3];
 
-    // API v1 Routes - JSON endpoints
-    if (path.startsWith('/api/v1/counter')) {
-      if (req.method === 'GET') {
-        return await getCounter(req);
-      } else if (req.method === 'POST') {
-        if (path.endsWith('/increment')) {
-          return await incrementCounter(req);
-        } else if (path.endsWith('/decrement')) {
-          return await decrementCounter(req);
-        }
+      if (['github', 'google'].includes(provider)) {
+        return await handleAuthRequest(req, provider, action);
       }
     }
 
-    // Component Routes - Hypermedia endpoints
-    if (path.startsWith('/components/counter')) {
-      return await handleCounter(req);
+    // Serve login page
+    if (path === '/login') {
+      return new Response(renderFullPage(renderLoginPage()), {
+        headers: { 'Content-Type': 'text/html' }
+      });
     }
-
-    // Device Flow Routes
-    if (path.startsWith('/api/auth/google/device')) {
-      return await initiateGoogleDeviceFlowHandler(req);
-    }
-
-    if (path.startsWith('/api/auth/google/token')) {
-      return await pollGoogleTokenHandler(req);
-    }
-
-    return new Response('Not Found', { status: 404 });
-  } catch (err) {
-    console.error(err);
-    return new Response('Internal Server Error', { status: 500 });
   }
+
+  // Check authentication for all other routes
+  const sessionId = await getSessionId(req);
+  if (!sessionId) {
+    return new Response(null, {
+      status: 302,
+      headers: { 'Location': '/login' }
+    });
+  }
+
+  // Apply auth middleware for authenticated routes
+  const ctx = {
+    request: req,
+    state: {},
+  };
+  await authMiddleware(ctx);
+
+  // Handle authenticated routes
+  switch (path) {
+    case '/':
+      const html = await Deno.readFile('./views/home.html');
+      return new Response(new TextDecoder().decode(html), {
+        headers: { 'Content-Type': 'text/html' }
+      });
+
+    case '/api/v1/counter':
+      if (req.method === 'GET') {
+        return await getCounter(req);
+      }
+      break;
+
+    case '/api/v1/counter/increment':
+      if (req.method === 'POST') {
+        return await incrementCounter(req);
+      }
+      break;
+
+    case '/api/v1/counter/decrement':
+      if (req.method === 'POST') {
+        return await decrementCounter(req);
+      }
+      break;
+
+    case '/components/counter':
+      return await handleCounter(req);
+
+    case '/api/auth/google/device':
+      return await initiateGoogleDeviceFlowHandler(req);
+
+    case '/api/auth/google/token':
+      return await pollGoogleTokenHandler(req);
+  }
+
+  return new Response('Not Found', { status: 404 });
 } 

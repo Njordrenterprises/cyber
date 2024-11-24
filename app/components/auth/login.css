@@ -34,4 +34,12 @@
   .auth-controls .cyberpunk-button {
     padding: 1rem;
   }
+}
+
+.auth-controls a.cyberpunk-button {
+  text-decoration: none;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 } 

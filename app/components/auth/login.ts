@@ -12,18 +12,16 @@ export function renderLoginPage() {
             <div class="cyberpunk-card-content">
               <h2 class="cyberpunk-card-title">Choose Your Auth Provider</h2>
               <div class="auth-controls">
-                <button 
-                  class="cyberpunk-button hacker"
-                  hx-get="/auth/github/signin"
-                  hx-push-url="true">
+                <a 
+                  href="/auth/github/signin"
+                  class="cyberpunk-button hacker">
                   <span class="button-text">Login with GitHub</span>
-                </button>
-                <button 
-                  class="cyberpunk-button neural"
-                  hx-get="/auth/google/signin"
-                  hx-push-url="true">
+                </a>
+                <a 
+                  href="/auth/google/signin"
+                  class="cyberpunk-button neural">
                   <span class="button-text">Login with Google</span>
-                </button>
+                </a>
               </div>
             </div>
           </div>
