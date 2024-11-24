@@ -6,7 +6,8 @@ interface CounterData {
   lastUpdated: number;
 }
 
-export async function getCounter(request: Request): Promise<Response> {
+// Internal function to get counter value
+async function _getCounter(request: Request): Promise<Response> {
   const userId = request.headers.get('X-User-ID');
   if (!userId) {
     return new Response('Unauthorized', { status: 401 });
@@ -35,7 +36,7 @@ export async function incrementCounter(request: Request): Promise<Response> {
     lastUpdated: Date.now()
   });
 
-  return getCounter(request);
+  return _getCounter(request);
 }
 
 export async function decrementCounter(request: Request): Promise<Response> {
@@ -53,5 +54,8 @@ export async function decrementCounter(request: Request): Promise<Response> {
     lastUpdated: Date.now()
   });
 
-  return getCounter(request);
-} 
+  return _getCounter(request);
+}
+
+// Re-export getCounter for router use
+export { _getCounter as getCounter }; 

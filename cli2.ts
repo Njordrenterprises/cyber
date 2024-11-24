@@ -389,3 +389,19 @@ if (import.meta.main) {
   main().catch(console.error);
 }
 
+async function getCounter(token: string): Promise<number> {
+  const response = await fetch(`${BASE_URL}/components/counter/ws`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get counter: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.count;
+}
+

@@ -43,8 +43,24 @@
                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                    const wsUrl = `${protocol}//${window.location.host}/components/counter/ws`;
                    
+                   // Get the session token from cookie or local storage
+                   const token = document.cookie
+                     .split('; ')
+                     .find(row => row.startsWith('session='))
+                     ?.split('=')[1];
+
+                   if (!token) {
+                     console.error('No session token found');
+                     return;
+                   }
+
+                   // Create WebSocket with authentication
                    this.socket = new WebSocket(wsUrl);
-                   
+                   this.socket.onopen = () => {
+                     // Send authentication immediately after connection
+                     this.socket.send(JSON.stringify({ token }));
+                   };
+
                    this.socket.onmessage = (event) => {
                      try {
                        const data = JSON.parse(event.data);

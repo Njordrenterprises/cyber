@@ -1,3 +1,6 @@
+import { authMiddleware } from '../../auth/middleware.ts';
+import type { Context } from '../../types.ts';
+
 // Initialize KV store
 const kv = await Deno.openKv();
 
@@ -15,15 +18,12 @@ async function getCount(userId: string): Promise<number> {
 
 // WebSocket handler for counter updates
 async function handleCounterSocket(socket: WebSocket, userId: string) {
-  // Create a new KV watch stream for this user's counter
   const stream = kv.watch([['counters', userId]]);
   
   try {
-    // Send initial count immediately
     const initialCount = await getCount(userId);
     socket.send(JSON.stringify({ count: initialCount }));
 
-    // Watch for changes
     for await (const [entry] of stream) {
       if (socket.readyState !== WebSocket.OPEN) break;
       
@@ -43,44 +43,47 @@ async function handleCounterSocket(socket: WebSocket, userId: string) {
 }
 
 // Handle component requests
-export function handleCounter(req: Request): Response | Promise<Response> {
+export async function handleCounter(req: Request): Promise<Response> {
   const url = new URL(req.url);
+  const ctx: Context = { request: req, state: {} };
+  const authResult = await authMiddleware(ctx);
   
-  // Only handle WebSocket upgrade requests
-  if (!url.pathname.endsWith('/ws')) {
-    return new Response('Not Found', { status: 404 });
+  if (authResult instanceof Response) {
+    return authResult;
   }
 
-  // Verify authentication
-  const userId = req.headers.get('X-User-ID');
-  if (!userId) {
+  if (!ctx.state.user?.id) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  try {
-    const { socket, response } = Deno.upgradeWebSocket(req);
-    
-    // Set up WebSocket event handlers
-    socket.onopen = () => {
-      console.log('WebSocket opened for user:', userId);
-      // handleCounterSocket is called after connection is established
-      handleCounterSocket(socket, userId).catch(error => {
-        console.error('Counter socket handler error:', error);
-        socket.close();
-      });
-    };
+  // Handle WebSocket upgrade requests
+  if (url.pathname.endsWith('/ws')) {
+    try {
+      const { socket, response } = Deno.upgradeWebSocket(req);
+      
+      socket.onopen = () => {
+        console.log('WebSocket opened for user:', ctx.state.user?.id);
+        handleCounterSocket(socket, ctx.state.user!.id).catch(error => {
+          console.error('Counter socket handler error:', error);
+          socket.close();
+        });
+      };
 
-    socket.onerror = (error) => {
-      console.error('WebSocket error for user:', userId, error);
-    };
+      socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
 
-    socket.onclose = () => {
-      console.log('WebSocket closed for user:', userId);
-    };
+      socket.onclose = () => {
+        console.log('WebSocket closed');
+      };
 
-    return response;
-  } catch (error) {
-    console.error('WebSocket upgrade error:', error);
-    return new Response('WebSocket upgrade failed', { status: 500 });
+      return response;
+    } catch (error) {
+      console.error('WebSocket upgrade error:', error);
+      return new Response('WebSocket upgrade failed', { status: 500 });
+    }
   }
+
+  // Return 404 for non-WebSocket requests
+  return new Response('Not Found', { status: 404 });
 } 
