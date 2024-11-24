@@ -16,6 +16,30 @@ export async function handleRequest(req: Request): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
 
+    // Auth routes
+    if (path.startsWith('/auth/')) {
+      const segments = path.split('/');
+      // Handle login page
+      if (segments[2] === 'login') {
+        return new Response(renderLoginPage(), {
+          headers: { 'Content-Type': 'text/html' },
+        });
+      }
+      // Handle logout
+      if (segments[2] === 'logout') {
+        return await signOut(req);
+      }
+      // Handle OAuth provider routes
+      if (['github', 'google'].includes(segments[2])) {
+        if (segments[3] === 'signin') {
+          return await signIn(segments[2], req);
+        }
+        if (segments[3] === 'callback') {
+          return await handleCallback(segments[2], req);
+        }
+      }
+    }
+
     // Static file handling
     if (path.startsWith('/styles/')) {
       try {

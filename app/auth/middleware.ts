@@ -1,15 +1,6 @@
 /// <reference lib="deno.unstable" />
 
-interface Context {
-  request: Request;
-  state: {
-    user?: {
-      id: string;
-      provider: string;
-      providerId: string;
-    };
-  };
-}
+import type { Context, Session } from '../types.ts';
 
 const kv = await Deno.openKv();
 
@@ -22,14 +13,14 @@ export async function authMiddleware(ctx: Context): Promise<void> {
   }
 
   // Check session in KV
-  const session = await kv.get(['sessions', sessionId]);
+  const session = await kv.get<Session>(['sessions', sessionId]);
   if (!session.value) {
     return;
   }
 
   // Check if session is expired
   const now = Date.now();
-  if (now > session.value.expiresAt) {
+  if (now > session.value.timestamp + (7 * 24 * 60 * 60 * 1000)) { // 7 days
     await kv.delete(['sessions', sessionId]);
     return;
   }
