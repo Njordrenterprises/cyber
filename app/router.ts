@@ -48,14 +48,15 @@ export async function handleRequest(req: Request): Promise<Response> {
   }
 
   // Allow static assets and auth routes without authentication
-  if (path.startsWith('/styles/') || path.startsWith('/auth/') || path === '/login') {
+  if (path.startsWith('/styles/') || path.startsWith('/components/') || path.startsWith('/auth/') || path === '/login') {
     // Handle static files
-    if (path.startsWith('/styles/')) {
+    if (path.startsWith('/styles/') || path.startsWith('/components/')) {
       try {
         const file = await Deno.readFile(`./app${path}`);
+        const contentType = path.endsWith('.css') ? 'text/css' : 'text/plain';
         return new Response(file, {
           headers: { 
-            'Content-Type': 'text/css',
+            'Content-Type': contentType,
             'Cache-Control': 'public, max-age=3600'
           },
         });
