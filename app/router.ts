@@ -3,6 +3,7 @@ import { handleCallback, signIn, signOut } from './auth/oauth.ts';
 import { renderLoginPage } from './components/auth/login.ts';
 import { handleCounter } from './components/Counter/counter.ts';
 import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter.ts';
+import { handleAuthRequest } from './api/v1/auth.ts';
 
 export async function handleRequest(req: Request): Promise<Response> {
   const ctx = {
@@ -17,27 +18,26 @@ export async function handleRequest(req: Request): Promise<Response> {
     const path = url.pathname;
 
     // Auth routes
-    if (path.startsWith('/auth/')) {
+    if (path.startsWith('/auth/') || path.startsWith('/api/v1/auth/')) {
       const segments = path.split('/');
-      // Handle login page
-      if (segments[2] === 'login') {
+      const isApi = segments[1] === 'api';
+      const provider = isApi ? segments[4] : segments[2];
+      const action = isApi ? segments[5] : segments[3];
+
+      if (['github', 'google'].includes(provider)) {
+        if (['signin', 'callback', 'signout'].includes(action)) {
+          return await handleAuthRequest(req, provider, action);
+        }
+      }
+
+      // Handle login page for hypermedia requests
+      if (!isApi && action === 'login') {
         return new Response(renderLoginPage(), {
           headers: { 'Content-Type': 'text/html' },
         });
       }
-      // Handle logout
-      if (segments[2] === 'logout') {
-        return await signOut(req);
-      }
-      // Handle OAuth provider routes
-      if (['github', 'google'].includes(segments[2])) {
-        if (segments[3] === 'signin') {
-          return await signIn(segments[2], req);
-        }
-        if (segments[3] === 'callback') {
-          return await handleCallback(segments[2], req);
-        }
-      }
+
+      return new Response('Invalid auth request', { status: 400 });
     }
 
     // Static file handling

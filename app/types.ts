@@ -1,3 +1,10 @@
+export interface AuthResponse {
+  success: boolean;
+  status: number;
+  redirectUrl?: string;
+  error?: string;
+}
+
 export interface User {
   id: string;
   name: string;

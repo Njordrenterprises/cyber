@@ -4,25 +4,51 @@ import type { Context, Session } from '../types.ts';
 
 const kv = await Deno.openKv();
 
-export async function authMiddleware(ctx: Context): Promise<void> {
+// Define public paths that don't require authentication
+const PUBLIC_PATHS = [
+  '/auth',
+  '/api/v1/auth',
+  '/styles',
+  '/favicon.ico'
+];
+
+export async function authMiddleware(ctx: Context): Promise<void | Response> {
+  const url = new URL(ctx.request.url);
+  const path = url.pathname;
+  
+  // Check if path is public
+  if (PUBLIC_PATHS.some(publicPath => path.startsWith(publicPath))) {
+    return;
+  }
+
   // Get session cookie
   const sessionId = getCookie(ctx.request.headers, 'session');
   
+  // All other paths require authentication
   if (!sessionId) {
-    return;
+    const isApi = path.startsWith('/api/v1/');
+    return new Response(
+      isApi ? JSON.stringify({ error: 'Unauthorized' }) : 'Unauthorized', 
+      { 
+        status: 401,
+        headers: {
+          'Content-Type': isApi ? 'application/json' : 'text/plain'
+        }
+      }
+    );
   }
 
   // Check session in KV
   const session = await kv.get<Session>(['sessions', sessionId]);
   if (!session.value) {
-    return;
+    return new Response('Invalid session', { status: 401 });
   }
 
   // Check if session is expired
   const now = Date.now();
   if (now > session.value.timestamp + (7 * 24 * 60 * 60 * 1000)) { // 7 days
     await kv.delete(['sessions', sessionId]);
-    return;
+    return new Response('Session expired', { status: 401 });
   }
 
   // Add user to context state
