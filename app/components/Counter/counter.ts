@@ -121,31 +121,27 @@ export async function handleCounter(req: Request): Promise<Response> {
     }
   }
 
-  // Handle increment/decrement
+  // Handle increment/decrement for HTMX
   if (req.method === 'POST') {
-    try {
-      if (path.endsWith('/increment')) {
-        const count = await incrementCount(userId);
-        return new Response(count.toString());
-      } 
-      if (path.endsWith('/decrement')) {
-        const count = await decrementCount(userId);
-        return new Response(count.toString());
-      }
-    } catch (error) {
-      console.error('Counter operation error:', error);
-      return new Response('Operation failed', { status: 500 });
+    let newCount: number;
+    
+    if (path.endsWith('/increment')) {
+      newCount = await incrementCount(userId);
+    } else if (path.endsWith('/decrement')) {
+      newCount = await decrementCount(userId);
+    } else {
+      return new Response('Not Found', { status: 404 });
     }
+
+    // Return just the number for HTMX target update
+    return new Response(newCount.toString(), {
+      headers: { 'Content-Type': 'text/plain' }
+    });
   }
 
   // Handle initial render
-  try {
-    const count = await getCount(userId);
-    return new Response(renderCounterHtml(count), {
-      headers: { 'Content-Type': 'text/html' },
-    });
-  } catch (error) {
-    console.error('Counter render error:', error);
-    return new Response('Failed to render counter', { status: 500 });
-  }
+  const count = await getCount(userId);
+  return new Response(renderCounterHtml(count), {
+    headers: { 'Content-Type': 'text/html' },
+  });
 } 
