@@ -3,24 +3,34 @@ const kv = await Deno.openKv();
 
 interface CounterData {
   count: number;
+  userId: string;
+  lastUpdated: number;
 }
 
 // Counter operations
-async function getCount(): Promise<number> {
-  const result = await kv.get<CounterData>(['counter']);
+async function getCount(userId: string): Promise<number> {
+  const result = await kv.get<CounterData>(['counters', userId]);
   return result.value?.count ?? 0;
 }
 
-async function incrementCount(): Promise<number> {
-  const currentCount = await getCount();
-  await kv.set(['counter'], { count: currentCount + 1 });
+async function incrementCount(userId: string): Promise<number> {
+  const currentCount = await getCount(userId);
+  await kv.set(['counters', userId], { 
+    count: currentCount + 1,
+    userId,
+    lastUpdated: Date.now()
+  });
   return currentCount + 1;
 }
 
-async function decrementCount(): Promise<number> {
-  const currentCount = await getCount();
-  await kv.set(['counter'], { count: Math.max(0, currentCount - 1) });
-  return currentCount - 1;
+async function decrementCount(userId: string): Promise<number> {
+  const currentCount = await getCount(userId);
+  await kv.set(['counters', userId], { 
+    count: Math.max(0, currentCount - 1),
+    userId,
+    lastUpdated: Date.now()
+  });
+  return Math.max(0, currentCount - 1);
 }
 
 // Render counter HTML
@@ -47,8 +57,8 @@ function renderCounterHtml(count: number): string {
 }
 
 // WebSocket handler for counter updates
-async function handleCounterSocket(socket: WebSocket) {
-  const stream = kv.watch([['counter']]);
+async function handleCounterSocket(socket: WebSocket, userId: string) {
+  const stream = kv.watch([['counters', userId]]);
   
   try {
     for await (const [entry] of stream) {
@@ -67,6 +77,11 @@ async function handleCounterSocket(socket: WebSocket) {
 
 // Handle component requests
 export async function handleCounter(req: Request): Promise<Response> {
+  const userId = req.headers.get('X-User-ID');
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   const url = new URL(req.url);
   const path = url.pathname;
   
@@ -76,9 +91,9 @@ export async function handleCounter(req: Request): Promise<Response> {
     
     // Send initial count on connection
     socket.onopen = async () => {
-      const count = await getCount();
+      const count = await getCount(userId);
       socket.send(JSON.stringify({ count }));
-      handleCounterSocket(socket);
+      handleCounterSocket(socket, userId);
     };
     
     return response;
@@ -87,17 +102,17 @@ export async function handleCounter(req: Request): Promise<Response> {
   // Handle increment/decrement
   if (req.method === 'POST') {
     if (path.endsWith('/increment')) {
-      const count = await incrementCount();
+      const count = await incrementCount(userId);
       return new Response(count.toString());
     } 
     if (path.endsWith('/decrement')) {
-      const count = await decrementCount();
+      const count = await decrementCount(userId);
       return new Response(count.toString());
     }
   }
 
   // Handle initial render
-  const count = await getCount();
+  const count = await getCount(userId);
   return new Response(renderCounterHtml(count), {
     headers: { 'Content-Type': 'text/html' },
   });

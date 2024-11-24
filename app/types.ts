@@ -11,6 +11,8 @@ export interface User {
   email: string;
   provider: string;
   providerId: string;
+  created?: number;
+  lastLogin?: number;
 }
 
 export interface Session {
@@ -24,4 +26,10 @@ export interface Context {
   state: {
     user?: User;
   };
+}
+
+export interface CounterData {
+  count: number;
+  userId: string;
+  lastUpdated: number;
 } 

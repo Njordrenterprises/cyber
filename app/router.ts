@@ -66,12 +66,12 @@ export async function handleRequest(req: Request): Promise<Response> {
     // API v1 Routes - JSON endpoints
     if (path.startsWith('/api/v1/counter')) {
       if (req.method === 'GET') {
-        return await getCounter();
+        return await getCounter(req);
       } else if (req.method === 'POST') {
         if (path.endsWith('/increment')) {
-          return await incrementCounter();
+          return await incrementCounter(req);
         } else if (path.endsWith('/decrement')) {
-          return await decrementCounter();
+          return await decrementCounter(req);
         }
       }
     }
