@@ -38,19 +38,28 @@
                  reconnectDelay: 1000,
 
                  connect() {
+                   if (this.socket?.readyState === WebSocket.OPEN) return;
+                   
                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                    const wsUrl = `${protocol}//${window.location.host}/components/counter/ws`;
+                   
                    this.socket = new WebSocket(wsUrl);
                    
                    this.socket.onmessage = (event) => {
-                     const data = JSON.parse(event.data);
-                     this.count = data.count;
+                     try {
+                       const data = JSON.parse(event.data);
+                       this.count = data.count;
+                     } catch (error) {
+                       console.error('Failed to parse WebSocket message:', error);
+                     }
                    };
 
                    this.socket.onclose = () => {
+                     console.log('WebSocket closed, attempt:', this.reconnectAttempts);
                      if (this.reconnectAttempts < this.maxReconnectAttempts) {
                        this.reconnectAttempts++;
-                       setTimeout(() => this.connect(), this.reconnectDelay * this.reconnectAttempts);
+                       setTimeout(() => this.connect(), 
+                         this.reconnectDelay * Math.min(this.reconnectAttempts, 5));
                      }
                    };
 
@@ -59,10 +68,21 @@
                    };
                  },
 
+                 disconnect() {
+                   if (this.socket) {
+                     this.socket.close();
+                     this.socket = null;
+                   }
+                 },
+
                  init() {
                    this.connect();
+                   // Cleanup on page unload
+                   window.addEventListener('unload', () => this.disconnect());
                  }
-               }">
+               }"
+               @reconnect.window="connect()"
+          >
             <div class="counter-component">
               <div id="counter-value" class="counter-display glow-text" x-text="count">
                 0
