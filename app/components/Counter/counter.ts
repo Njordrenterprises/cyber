@@ -1,14 +1,8 @@
 import { authMiddleware } from '../../auth/middleware.ts';
-import type { Context } from '../../types.ts';
+import type { Context, CounterData } from '../../types.ts';
 
 // Initialize KV store
 const kv = await Deno.openKv();
-
-interface CounterData {
-  count: number;
-  userId: string;
-  lastUpdated: number;
-}
 
 // Get current count from KV store
 async function getCount(userId: string): Promise<number> {
@@ -40,6 +34,73 @@ async function handleCounterSocket(socket: WebSocket, userId: string) {
   } finally {
     stream.cancel();
   }
+}
+
+// Function to render the counter display HTML
+function renderCounterDisplay(count: number): string {
+  return `<div id="counter-value" class="counter-display glow-text">${count}</div>`;
+}
+
+// Handle increment action and return HTML snippet
+export async function handleIncrement(req: Request): Promise<Response> {
+  const ctx: Context = { request: req, state: {} };
+  const authResult = await authMiddleware(ctx);
+
+  if (authResult instanceof Response) {
+    return authResult;
+  }
+
+  const userId = ctx.state.user?.id;
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
+  const result = await kv.get<CounterData>(['counters', userId]);
+  const currentCount = result.value?.count ?? 0;
+
+  const newCount = currentCount + 1;
+
+  await kv.set(['counters', userId], {
+    count: newCount,
+    userId,
+    lastUpdated: Date.now(),
+  });
+
+  // Return the updated counter value as HTML
+  return new Response(renderCounterDisplay(newCount), {
+    headers: { 'Content-Type': 'text/html' },
+  });
+}
+
+// Handle decrement action and return HTML snippet
+export async function handleDecrement(req: Request): Promise<Response> {
+  const ctx: Context = { request: req, state: {} };
+  const authResult = await authMiddleware(ctx);
+
+  if (authResult instanceof Response) {
+    return authResult;
+  }
+
+  const userId = ctx.state.user?.id;
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
+  const result = await kv.get<CounterData>(['counters', userId]);
+  const currentCount = result.value?.count ?? 0;
+
+  const newCount = Math.max(0, currentCount - 1);
+
+  await kv.set(['counters', userId], {
+    count: newCount,
+    userId,
+    lastUpdated: Date.now(),
+  });
+
+  // Return the updated counter value as HTML
+  return new Response(renderCounterDisplay(newCount), {
+    headers: { 'Content-Type': 'text/html' },
+  });
 }
 
 // Handle component requests

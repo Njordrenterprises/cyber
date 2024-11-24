@@ -1,6 +1,6 @@
 import { authMiddleware } from './auth/middleware.ts';
 import { renderLoginPage } from './components/auth/login.ts';
-import { handleCounter } from './components/Counter/counter.ts';
+import { handleCounter, handleIncrement, handleDecrement } from './components/Counter/counter.ts';
 import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter.ts';
 import { handleAuthRequest } from './api/v1/auth.ts';
 import { initiateGoogleDeviceFlowHandler, pollGoogleTokenHandler } from './auth/deviceFlow.ts';
@@ -131,6 +131,20 @@ export async function handleRequest(req: Request): Promise<Response> {
     case '/api/v1/counter/decrement': {
       if (req.method === 'POST') {
         return await decrementCounter(req);
+      }
+      return new Response('Method Not Allowed', { status: 405 });
+    }
+
+    case '/components/counter/increment': {
+      if (req.method === 'POST') {
+        return await handleIncrement(req);
+      }
+      return new Response('Method Not Allowed', { status: 405 });
+    }
+
+    case '/components/counter/decrement': {
+      if (req.method === 'POST') {
+        return await handleDecrement(req);
       }
       return new Response('Method Not Allowed', { status: 405 });
     }

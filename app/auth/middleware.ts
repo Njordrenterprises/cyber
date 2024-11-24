@@ -6,7 +6,7 @@ import { getSessionId } from '@deno/kv-oauth';
 const kv = await Deno.openKv();
 
 interface Session {
-  userId: string;
+  user: User;
   created: number;
   expires: number;
 }
@@ -50,23 +50,25 @@ export async function authMiddleware(ctx: Context): Promise<void | Response> {
       userId = user.id;
     }
   } 
-  // Check for session (Web UI)
+  // Check for session cookie (Web App)
   else {
     const sessionId = await getSessionId(ctx.request);
     if (sessionId) {
       const session = await kv.get<Session>(['sessions', sessionId]);
       if (session.value) {
-        userId = session.value.userId;
+        ctx.state.user = session.value.user;
+        userId = ctx.state.user.id;
       }
     }
   }
 
   if (!userId) {
-    // For WebSocket upgrade requests, we can't redirect, so return 401
-    if (ctx.request.headers.get('Upgrade') === 'websocket') {
+    // Handle unauthorized access
+    if (ctx.request.headers.get('HX-Request') === 'true') {
+      // htmx request; return 401 without redirect
       return new Response('Unauthorized', { status: 401 });
     } else {
-      // For regular requests, redirect to login
+      // Regular request; redirect to login
       return new Response(null, {
         status: 302,
         headers: { Location: '/login' },
