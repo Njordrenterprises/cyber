@@ -62,7 +62,16 @@ export async function authMiddleware(ctx: Context): Promise<void | Response> {
   }
 
   if (!userId) {
-    return new Response('Unauthorized', { status: 401 });
+    // For WebSocket upgrade requests, we can't redirect, so return 401
+    if (ctx.request.headers.get('Upgrade') === 'websocket') {
+      return new Response('Unauthorized', { status: 401 });
+    } else {
+      // For regular requests, redirect to login
+      return new Response(null, {
+        status: 302,
+        headers: { Location: '/login' },
+      });
+    }
   }
 
   // Add user ID to headers for downstream handlers

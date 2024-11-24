@@ -5,7 +5,7 @@ import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter
 import { handleAuthRequest } from './api/v1/auth.ts';
 import { initiateGoogleDeviceFlowHandler, pollGoogleTokenHandler } from './auth/deviceFlow.ts';
 import { getSessionId } from '@deno/kv-oauth';
-import { handleOAuthCallback } from './auth/oauth.ts';
+import { handleOAuthCallback as _handleOAuthCallback } from './auth/oauth.ts';
 
 function renderFullPage(content: string) {
   return `<!DOCTYPE html>
@@ -34,22 +34,15 @@ export async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
 
-  // Handle OAuth callbacks
-  if (path === '/auth/github/callback' || path === '/auth/google/callback') {
-    const provider = path.split('/')[2];
-    const response = await handleOAuthCallback(provider, req);
-    if (response.status === 302) {
-      return new Response(null, {
-        status: 302,
-        headers: { 'Location': '/' }
-      });
-    }
-    return response;
-  }
-
-  // Allow static assets and auth routes without authentication
-  if (path.startsWith('/styles/') || path.startsWith('/components/') || path.startsWith('/auth/') || path === '/login') {
-    // Handle static files
+  // Allow unauthenticated access to certain paths
+  if (
+    path.startsWith('/styles/') ||
+    path.startsWith('/components/') ||
+    path.startsWith('/auth/') ||
+    path === '/login' ||
+    path.startsWith('/api/auth/')
+  ) {
+    // Handle static files and public API endpoints
     if (path.startsWith('/styles/') || path.startsWith('/components/')) {
       try {
         const file = await Deno.readFile(`./app${path}`);
@@ -65,21 +58,20 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
-    // Handle auth routes
-    if (path.startsWith('/auth/') || path.startsWith('/api/auth/')) {
+    // Handle device flow endpoints for Google
+    if (path === '/api/auth/google/device') {
+      return await initiateGoogleDeviceFlowHandler(req);
+    }
+    if (path === '/api/auth/google/token') {
+      return await pollGoogleTokenHandler(req);
+    }
+
+    // Handle regular OAuth flow
+    if (path.startsWith('/auth/')) {
       const segments = path.split('/');
       const provider = segments[2];
       const action = segments[3];
 
-      // Handle device flow endpoints
-      if (path === '/api/auth/google/device') {
-        return await initiateGoogleDeviceFlowHandler(req);
-      }
-      if (path === '/api/auth/google/token') {
-        return await pollGoogleTokenHandler(req);
-      }
-
-      // Handle regular OAuth flow
       if (['github', 'google'].includes(provider)) {
         return await handleAuthRequest(req, provider, action);
       }
@@ -88,9 +80,12 @@ export async function handleRequest(req: Request): Promise<Response> {
     // Serve login page
     if (path === '/login') {
       return new Response(renderFullPage(renderLoginPage()), {
-        headers: { 'Content-Type': 'text/html' }
+        headers: { 'Content-Type': 'text/html' },
       });
     }
+
+    // If no route matches, return 404
+    return new Response('Not Found', { status: 404 });
   }
 
   // Check authentication for all other routes
@@ -98,7 +93,7 @@ export async function handleRequest(req: Request): Promise<Response> {
   if (!sessionId) {
     return new Response(null, {
       status: 302,
-      headers: { 'Location': '/login' }
+      headers: { Location: '/login' },
     });
   }
 
@@ -112,9 +107,10 @@ export async function handleRequest(req: Request): Promise<Response> {
   // Handle authenticated routes
   switch (path) {
     case '/': {
+      // Serve home page
       const html = await Deno.readFile('./views/home.html');
       return new Response(new TextDecoder().decode(html), {
-        headers: { 'Content-Type': 'text/html' }
+        headers: { 'Content-Type': 'text/html' },
       });
     }
 
@@ -122,29 +118,29 @@ export async function handleRequest(req: Request): Promise<Response> {
       if (req.method === 'GET') {
         return await getCounter(req);
       }
-      break;
+      return new Response('Method Not Allowed', { status: 405 });
     }
 
     case '/api/v1/counter/increment': {
       if (req.method === 'POST') {
         return await incrementCounter(req);
       }
-      break;
+      return new Response('Method Not Allowed', { status: 405 });
     }
 
     case '/api/v1/counter/decrement': {
       if (req.method === 'POST') {
         return await decrementCounter(req);
       }
-      break;
+      return new Response('Method Not Allowed', { status: 405 });
     }
 
-    case '/components/counter/ws':
-    case '/components/counter/increment':
-    case '/components/counter/decrement':
-    case '/components/counter':
+    case '/components/counter/ws': {
       return await handleCounter(req);
-  }
+    }
 
-  return new Response('Not Found', { status: 404 });
+    default: {
+      return new Response('Not Found', { status: 404 });
+    }
+  }
 } 
