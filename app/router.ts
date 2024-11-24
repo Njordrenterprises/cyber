@@ -5,6 +5,7 @@ import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter
 import { handleAuthRequest } from './api/v1/auth.ts';
 import { initiateGoogleDeviceFlowHandler, pollGoogleTokenHandler } from './auth/deviceFlow.ts';
 import { getSessionId } from '@deno/kv-oauth';
+import { handleOAuthCallback } from './auth/oauth.ts';
 
 function renderFullPage(content: string) {
   return `<!DOCTYPE html>
@@ -32,6 +33,19 @@ function renderFullPage(content: string) {
 export async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
+
+  // Handle OAuth callbacks
+  if (path === '/auth/github/callback' || path === '/auth/google/callback') {
+    const provider = path.split('/')[2];
+    const response = await handleOAuthCallback(provider, req);
+    if (response.status === 302) {
+      return new Response(null, {
+        status: 302,
+        headers: { 'Location': '/' }
+      });
+    }
+    return response;
+  }
 
   // Allow static assets and auth routes without authentication
   if (path.startsWith('/styles/') || path.startsWith('/auth/') || path === '/login') {
@@ -87,29 +101,33 @@ export async function handleRequest(req: Request): Promise<Response> {
 
   // Handle authenticated routes
   switch (path) {
-    case '/':
+    case '/': {
       const html = await Deno.readFile('./views/home.html');
       return new Response(new TextDecoder().decode(html), {
         headers: { 'Content-Type': 'text/html' }
       });
+    }
 
-    case '/api/v1/counter':
+    case '/api/v1/counter': {
       if (req.method === 'GET') {
         return await getCounter(req);
       }
       break;
+    }
 
-    case '/api/v1/counter/increment':
+    case '/api/v1/counter/increment': {
       if (req.method === 'POST') {
         return await incrementCounter(req);
       }
       break;
+    }
 
-    case '/api/v1/counter/decrement':
+    case '/api/v1/counter/decrement': {
       if (req.method === 'POST') {
         return await decrementCounter(req);
       }
       break;
+    }
 
     case '/components/counter':
       return await handleCounter(req);
