@@ -1,5 +1,4 @@
 import { authMiddleware } from './auth/middleware.ts';
-import { handleCallback, signIn, signOut } from './auth/oauth.ts';
 import { renderLoginPage } from './components/auth/login.ts';
 import { handleCounter } from './components/Counter/counter.ts';
 import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter.ts';

@@ -21,6 +21,6 @@ console.log('OAUTH_GITHUB_CLIENT_SECRET set to:', Deno.env.get("OAUTH_GITHUB_CLI
 
 // Create and export the GitHub OAuth config with only valid properties
 export const github = createGitHubOAuthConfig({
-  redirectUri: "http://localhost:8000/auth/github/callback",
+  redirectUri: "https://cyberclock.ca/auth/github/callback",
   scope: ["read:user", "user:email"]
 }); 

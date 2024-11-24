@@ -1,6 +1,7 @@
 # Cyber Framework
 
-A hypermedia-driven web framework for Deno, leveraging HTMX, Alpine.js, and Deno KV for state management.
+A hypermedia-driven web framework for Deno, leveraging HTMX, Alpine.js, and Deno
+KV for state management.
 
 ## Table of Contents
 
@@ -20,25 +21,37 @@ A hypermedia-driven web framework for Deno, leveraging HTMX, Alpine.js, and Deno
 
 ## Introduction
 
-Cyber Framework is a lightweight, hypermedia-driven web framework for building secure and scalable web applications using Deno. It emphasizes native TypeScript code, hypermedia patterns, and leverages Deno KV for data persistence and session management.
+Cyber Framework is a lightweight, hypermedia-driven web framework for building
+secure and scalable web applications using Deno. It emphasizes native TypeScript
+code, hypermedia patterns, and leverages Deno KV for data persistence and
+session management.
 
 ## Features
 
-- **Deno Runtime**: Built with Deno 2.0.6, utilizing its native APIs and features.
-- **Hypermedia-Driven**: Employs HTMX for dynamic updates without heavy client-side JavaScript.
-- **Lightweight Interactivity**: Uses Alpine.js for minimal client-side scripting.
-- **Secure Authentication**: Implements OAuth flows using Deno KV OAuth with PKCE for enhanced security.
-- **State Management**: Manages sessions and data using Deno KV, a key-value store.
-- **Modular Components**: Promotes code locality by co-locating related code (HTML, CSS, TS) within components.
-- **Performance Optimized**: Focuses on minimal client-side JavaScript and optimized KV queries.
+- **Deno Runtime**: Built with Deno 2.0.6, utilizing its native APIs and
+  features.
+- **Hypermedia-Driven**: Employs HTMX for dynamic updates without heavy
+  client-side JavaScript.
+- **Lightweight Interactivity**: Uses Alpine.js for minimal client-side
+  scripting.
+- **Secure Authentication**: Implements OAuth flows using Deno KV OAuth with
+  PKCE for enhanced security.
+- **State Management**: Manages sessions and data using Deno KV, a key-value
+  store.
+- **Modular Components**: Promotes code locality by co-locating related code
+  (HTML, CSS, TS) within components.
+- **Performance Optimized**: Focuses on minimal client-side JavaScript and
+  optimized KV queries.
 
 ## Getting Started
 
 ### Prerequisites
 
-- **Deno**: Install Deno 2.0.6 or later from [deno.land](https://deno.land/#installation).
+- **Deno**: Install Deno 2.0.6 or later from
+  [deno.land](https://deno.land/#installation).
 - **Git**: Ensure Git is installed for version control.
-- **OAuth Credentials**: Obtain client IDs and client secrets from OAuth providers like Google and GitHub.
+- **OAuth Credentials**: Obtain client IDs and client secrets from OAuth
+  providers like Google and GitHub.
 
 ### Installation
 
@@ -72,7 +85,9 @@ Cyber Framework is a lightweight, hypermedia-driven web framework for building s
    # SESSION_SECRET=your_session_secret
    ```
 
-   Replace `your_github_client_id`, `your_github_client_secret`, `your_google_client_id`, and `your_google_client_secret` with your actual credentials.
+   Replace `your_github_client_id`, `your_github_client_secret`,
+   `your_google_client_id`, and `your_google_client_secret` with your actual
+   credentials.
 
 ### Configuration
 
@@ -109,7 +124,8 @@ To add a new OAuth provider, follow these steps:
 
 1. **Create Provider Configuration**:
 
-   In the `app/auth/providers/` directory, create a new file for your provider, e.g., `myprovider.ts`:
+   In the `app/auth/providers/` directory, create a new file for your provider,
+   e.g., `myprovider.ts`:
 
    ```typescript:app/auth/providers/myprovider.ts
    import { createOAuth2Client } from "@deno/kv-oauth";
@@ -137,44 +153,35 @@ To add a new OAuth provider, follow these steps:
 
 3. **Load the Provider in `oauth.ts`**:
 
-   Update `app/auth/oauth.ts` to import the new provider:
+   Ensure the new provider is imported and added to the `providers` record in
+   `app/auth/oauth.ts`:
 
    ```typescript:app/auth/oauth.ts
-   import "./providers/myprovider.ts";
-   ```
+   import { 
+     signIn as kvoSignIn, 
+     handleCallback as kvoHandleCallback, 
+     signOut as kvoSignOut, 
+     getSessionId,
+     type OAuth2ClientConfig 
+   } from "@deno/kv-oauth";
 
-4. **Update Routes**:
+   import { github } from "./providers/github.ts";
+   import { google } from "./providers/google.ts";
+   import { myProvider } from "./providers/myprovider.ts";
 
-   Ensure your routing logic in `app/router.ts` can handle the new provider:
-
-   ```typescript:app/router.ts
-   // ... existing code ...
-
-   if (segments[2] === 'myprovider') {
-     if (segments[3] === 'signin') {
-       return await signIn('myprovider', req);
-     }
-     if (segments[3] === 'callback') {
-       return await handleCallback('myprovider', req);
-     }
-   }
-
-   // ... existing code ...
-   ```
-
-5. **Register Redirect URI**:
-
-   In your OAuth provider's developer console, register the redirect URI:
-
-   ```
-   http://localhost:8000/auth/myprovider/callback
+   const providers: Record<string, OAuth2ClientConfig> = {
+     github,
+     google,
+     myprovider: myProvider,
+   };
    ```
 
 ## Using CSS and Components
 
 ### Components
 
-All UI components are located in `app/components/`. Each component has its own directory, following the PascalCase naming convention.
+All UI components are located in `app/components/`. Each component has its own
+directory, following the PascalCase naming convention.
 
 #### Example: Counter Component
 
@@ -189,7 +196,8 @@ All UI components are located in `app/components/`. Each component has its own d
 
 ### CSS Styles
 
-Component-specific styles are located within their respective component directories or in the global `app/styles/` directory.
+Component-specific styles are located within their respective component
+directories or in the global `app/styles/` directory.
 
 #### Example: Cards CSS
 
@@ -239,16 +247,23 @@ Component-specific styles are located within their respective component director
 
 ## Development Guidelines
 
-- **Native Deno APIs**: Use Deno's standard library and features over third-party modules.
-- **Co-located Code**: Keep HTML, CSS, and TypeScript files related to a component within the same directory.
+- **Native Deno APIs**: Use Deno's standard library and features over
+  third-party modules.
+- **Co-located Code**: Keep HTML, CSS, and TypeScript files related to a
+  component within the same directory.
 - **Hypermedia Patterns**: Utilize HTMX for server-driven UI updates.
-- **Lightweight Interactivity**: Use Alpine.js for client-side behavior when necessary.
-- **TypeScript Strictness**: Ensure proper typing by enabling `strict` and `noImplicitAny` in your `deno.json` or `tsconfig.json`.
+- **Lightweight Interactivity**: Use Alpine.js for client-side behavior when
+  necessary.
+- **TypeScript Strictness**: Ensure proper typing by enabling `strict` and
+  `noImplicitAny` in your `deno.json` or `tsconfig.json`.
 - **Semantic HTML**: Use semantic tags to improve accessibility and SEO.
 - **Error Handling**: Include comprehensive error handling in your code.
-- **Performance Optimization**: Minimize client-side JavaScript and optimize KV queries.
-- **Naming Conventions**: Follow the project's naming conventions for files and components.
-- **Code Documentation**: Write self-documenting code with clear naming and include comments where necessary.
+- **Performance Optimization**: Minimize client-side JavaScript and optimize KV
+  queries.
+- **Naming Conventions**: Follow the project's naming conventions for files and
+  components.
+- **Code Documentation**: Write self-documenting code with clear naming and
+  include comments where necessary.
 
 ## Contributing
 
@@ -257,7 +272,8 @@ Contributions are welcome! Please follow these guidelines:
 - **Fork the Repository**: Make your changes in a new branch.
 - **Write Clear Commit Messages**: Describe your changes thoroughly.
 - **Ensure Code Quality**: Run linters and tests before submitting.
-- **Pull Requests**: Submit your PR for review and be responsive to any feedback.
+- **Pull Requests**: Submit your PR for review and be responsive to any
+  feedback.
 
 ## License
 

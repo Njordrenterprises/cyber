@@ -21,7 +21,7 @@ console.log('OAUTH_GOOGLE_CLIENT_SECRET set to:', Deno.env.get("OAUTH_GOOGLE_CLI
 
 // Create and export the Google OAuth config with only valid properties
 export const google = createGoogleOAuthConfig({
-  redirectUri: "http://localhost:8000/auth/google/callback",
+  redirectUri: "https://cyberclock.ca/auth/google/callback",
   scope: [
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email"

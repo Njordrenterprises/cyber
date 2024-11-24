@@ -1,9 +1,7 @@
 import { 
   signIn as kvoSignIn, 
   handleCallback as kvoHandleCallback, 
-  signOut as kvoSignOut, 
-  getSessionId,
-  type SignInOptions,
+  signOut as kvoSignOut,
   type OAuth2ClientConfig 
 } from "@deno/kv-oauth";
 
@@ -16,7 +14,7 @@ const providers: Record<string, OAuth2ClientConfig> = {
 };
 
 // Type-safe wrapper for signIn
-async function handleSignIn(provider: string, request: Request): Promise<Response> {
+export async function handleSignIn(provider: string, request: Request): Promise<Response> {
   const config = providers[provider];
   if (!config) {
     return new Response('Invalid provider', { status: 400 });
@@ -28,7 +26,7 @@ async function handleSignIn(provider: string, request: Request): Promise<Respons
 }
 
 // Wrap handleCallback to handle the response
-async function handleOAuthCallback(provider: string, request: Request): Promise<Response> {
+export async function handleOAuthCallback(provider: string, request: Request): Promise<Response> {
   const config = providers[provider];
   if (!config) {
     return new Response('Invalid provider', { status: 400 });
@@ -39,15 +37,11 @@ async function handleOAuthCallback(provider: string, request: Request): Promise<
 }
 
 // Handle signout
-async function handleSignOut(request: Request): Promise<Response> {
+export async function handleSignOut(request: Request): Promise<Response> {
   return await kvoSignOut(request);
 }
 
-// Export functions with proper types
-export { 
-  handleSignIn as signIn,
-  handleOAuthCallback as handleCallback,
-  handleSignOut as signOut,
-  getSessionId 
-};
+export const signIn = handleSignIn;
+export const handleCallback = handleOAuthCallback;
+export const signOut = handleSignOut;
  

@@ -1,7 +1,7 @@
 import type { AuthResponse } from './types.ts';
 import { load } from "@std/dotenv";
 
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = 'https://cyberclock.ca';
 let isAuthenticated = false;
 
 async function makeRequest(endpoint: string, method: 'GET' | 'POST' = 'GET'): Promise<Response> {
