@@ -7,6 +7,11 @@ interface AuthResponse {
   error?: string;
 }
 
+interface TokenData {
+  provider: 'github' | 'google';
+  token: string;
+}
+
 async function initiateDeviceFlow(): Promise<{
   device_code: string;
   user_code: string;
@@ -145,28 +150,51 @@ async function pollGoogleToken(deviceCode: string, interval: number): Promise<{
   }
 }
 
-// Update makeAuthRequest to include the access token
+// Add this interface for user data
+interface UserData {
+  id: string;
+  login?: string;  // GitHub
+  name?: string;   // Google
+  email: string;
+}
+
+// Update makeAuthRequest to accept provider information
 async function makeAuthRequest(
   endpoint: string,
   method: 'GET' | 'POST' = 'GET',
   data?: Record<string, unknown>,
-  token?: string
+  tokenData?: TokenData
 ): Promise<Response> {
   const headers: Record<string, string> = {
     'Accept': 'application/json',
     'User-Agent': 'CyberClock-CLI/1.0',
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (tokenData?.token) {
+    headers['Authorization'] = `Bearer ${tokenData.token}`;
+    
+    const userEndpoint = tokenData.provider === 'github' ? 
+      'https://api.github.com/user' : 
+      'https://www.googleapis.com/oauth2/v2/userinfo';
+      
+    const userResponse = await fetch(userEndpoint, {
+      headers: {
+        'Authorization': `Bearer ${tokenData.token}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (userResponse.ok) {
+      const userData = await userResponse.json();
+      const userId = tokenData.provider === 'github' ? userData.id.toString() : userData.id;
+      headers['X-User-ID'] = userId;
+    } else {
+      console.error('Failed to fetch user data:', await userResponse.text());
+    }
   }
 
   const url = new URL(`${BASE_URL}/api/v1${endpoint}`);
-
-  const options: RequestInit = {
-    method,
-    headers,
-  };
+  const options: RequestInit = { method, headers };
 
   if (data) {
     headers['Content-Type'] = 'application/json';
@@ -185,18 +213,18 @@ function showMainMenu() {
   console.log('0. Exit');
 }
 
-async function handleCounter(token: string) {
+async function handleCounter(tokenData: TokenData) {
   while (true) {
-    const response = await makeAuthRequest('/counter', 'GET', undefined, token);
+    const response = await makeAuthRequest('/counter', 'GET', undefined, tokenData);
     if (!response.ok) {
       console.error('Failed to fetch counter');
       return;
     }
-    const { count } = await response.json();
+    const data = await response.json();
     
     console.log('\n⚡ Counter API');
     console.log('============');
-    console.log('Current count:', count);
+    console.log('Current count:', data.count);
     console.log('\nOperations:');
     console.log('1. Increment');
     console.log('2. Decrement');
@@ -206,18 +234,22 @@ async function handleCounter(token: string) {
 
     switch (choice) {
       case '1': {
-        const response = await makeAuthRequest('/counter/increment', 'POST', undefined, token);
+        const response = await makeAuthRequest('/counter/increment', 'POST', undefined, tokenData);
         if (response.ok) {
-          const { count } = await response.json();
-          console.log('Counter incremented. New value:', count);
+          const data = await response.json();
+          console.log('Counter incremented. New value:', data.count);
+        } else {
+          console.error('Failed to increment counter');
         }
         break;
       }
       case '2': {
-        const response = await makeAuthRequest('/counter/decrement', 'POST', undefined, token);
+        const response = await makeAuthRequest('/counter/decrement', 'POST', undefined, tokenData);
         if (response.ok) {
-          const { count } = await response.json();
-          console.log('Counter decremented. New value:', count);
+          const data = await response.json();
+          console.log('Counter decremented. New value:', data.count);
+        } else {
+          console.error('Failed to decrement counter');
         }
         break;
       }
@@ -229,9 +261,9 @@ async function handleCounter(token: string) {
   }
 }
 
-async function handleSignOut(token: string): Promise<boolean> {
+async function handleSignOut(tokenData: TokenData): Promise<boolean> {
   try {
-    const response = await makeAuthRequest('/auth/signout', 'POST', undefined, token);
+    const response = await makeAuthRequest('/auth/signout', 'POST', undefined, tokenData);
     const data = await response.json() as AuthResponse;
     if (data.success) {
       console.log('✅ Signed out successfully');
@@ -248,7 +280,7 @@ async function handleSignOut(token: string): Promise<boolean> {
 
 async function main() {
   let isAuthenticated = false;
-  let accessToken: string | undefined;
+  let currentTokenData: TokenData | undefined;
 
   while (true) {
     if (!isAuthenticated) {
@@ -271,10 +303,10 @@ async function main() {
           continue;
         }
 
-        const isGitHub = choice === '1';
-        console.log(`Initiating device authorization flow with ${isGitHub ? 'GitHub' : 'Google'}...`);
+        const provider = choice === '1' ? 'github' : 'google';
+        console.log(`Initiating device authorization flow with ${provider}...`);
 
-        const deviceData = isGitHub ? 
+        const deviceData = provider === 'github' ? 
           await initiateDeviceFlow() : 
           await initiateGoogleDeviceFlow();
 
@@ -286,20 +318,24 @@ async function main() {
         console.log('3. Authorize the application');
         console.log('Waiting for authorization...');
 
-        const tokenData = isGitHub ?
+        const tokenResponse = provider === 'github' ?
           await pollForToken(deviceData.device_code, deviceData.interval) :
           await pollGoogleToken(deviceData.device_code, deviceData.interval);
 
-        isAuthenticated = true;
-        accessToken = tokenData.access_token;
+        currentTokenData = {
+          provider,
+          token: tokenResponse.access_token
+        };
 
-        const userEndpoint = isGitHub ? 
+        isAuthenticated = true;
+
+        const userEndpoint = provider === 'github' ? 
           'https://api.github.com/user' : 
           'https://www.googleapis.com/oauth2/v2/userinfo';
 
         const userResponse = await fetch(userEndpoint, {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
+            'Authorization': `Bearer ${currentTokenData!.token}`,
             'Accept': 'application/json',
           },
         });
@@ -321,14 +357,18 @@ async function main() {
 
     switch (menuChoice) {
       case '1': {
-        await handleCounter(accessToken!);
+        if (currentTokenData) {
+          await handleCounter(currentTokenData);
+        }
         break;
       }
       case '2': {
-        if (await handleSignOut(accessToken!)) {
-          isAuthenticated = false;
-          accessToken = undefined;
-          continue;
+        if (currentTokenData) {
+          if (await handleSignOut(currentTokenData)) {
+            isAuthenticated = false;
+            currentTokenData = undefined;
+            continue;
+          }
         }
         break;
       }
