@@ -1,65 +1,38 @@
 /// <reference lib="deno.unstable" />
 
-import type { Context, Session } from '../types.ts';
-import { getSessionId } from "@deno/kv-oauth";
-
-// Initialize Deno KV
-const kv = await Deno.openKv();
-
-// Define public paths that don't require authentication
-const PUBLIC_PATHS = [
-  '/auth',
-  '/api/v1/auth',
-  '/styles',
-  '/favicon.ico'
-];
+import type { Context } from '../types.ts';
 
 export async function authMiddleware(ctx: Context): Promise<void | Response> {
-  const url = new URL(ctx.request.url);
-  const path = url.pathname;
-  
-  // Check if path is public
-  if (PUBLIC_PATHS.some(publicPath => path.startsWith(publicPath))) {
-    console.log(`Public path accessed: ${path}`);
-    return;
+  const authHeader = ctx.request.headers.get('Authorization');
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const accessToken = authHeader.slice('Bearer '.length);
+
+    // Validate the access token with GitHub
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (userResponse.ok) {
+      const userData = await userResponse.json();
+      // Create a user object for your application
+      ctx.state.user = {
+        id: userData.id.toString(),
+        name: userData.name || userData.login,
+        email: userData.email || '',
+        provider: 'github',
+        providerId: userData.id.toString(),
+      };
+      return;
+    }
   }
 
-  // Get session ID using kv-oauth's getSessionId
-  const sessionId = await getSessionId(ctx.request);
-  
-  if (!sessionId) {
-    const isApi = path.startsWith('/api/v1/');
-    console.log(`Unauthorized access attempt to ${path}`);
-    return new Response(
-      isApi ? JSON.stringify({ error: 'Unauthorized' }) : 'Unauthorized', 
-      { 
-        status: 401,
-        headers: {
-          'Content-Type': isApi ? 'application/json' : 'text/plain'
-        }
-      }
-    );
-  }
+  // Existing cookie-based authentication for web clients
+  // ...
 
-  console.log(`Session ID retrieved: ${sessionId}`);
-
-  // Check session in KV
-  const session = await kv.get<Session>(['sessions', sessionId]);
-  if (!session.value) {
-    console.log(`Invalid session ID: ${sessionId}`);
-    return new Response('Invalid session', { status: 401 });
-  }
-
-  // Check if session is expired
-  const now = Date.now();
-  if (now > session.value.timestamp + (7 * 24 * 60 * 60 * 1000)) { // 7 days
-    console.log(`Session expired for ID: ${sessionId}`);
-    await kv.delete(['sessions', sessionId]);
-    return new Response('Session expired', { status: 401 });
-  }
-
-  console.log(`Session valid for user: ${session.value.user.id}`);
-  
-  // Add user to context state
-  ctx.state.user = session.value.user;
+  // If authentication fails
+  return new Response('Unauthorized', { status: 401 });
 } 

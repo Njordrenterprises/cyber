@@ -1,31 +1,257 @@
-import { load } from "@std/dotenv";
+const BASE_URL = 'https://cyberclock.ca';
+const GITHUB_CLIENT_ID = 'Ov23lisA7NFRFBKKqvmi';  // Updated to your actual Client ID
+let isAuthenticated = false;
+let accessToken: string | undefined;
 
-async function main() {
-  console.log('🔍 Checking environment variables...\n');
-  
-  try {
-    // Load environment variables
-    await load({ export: true });
-    
-    // Check GitHub credentials
-    const githubId = Deno.env.get("GITHUB_CLIENT_ID");
-    const githubSecret = Deno.env.get("GITHUB_CLIENT_SECRET");
-    
-    console.log('GitHub Configuration:');
-    console.log('-------------------');
-    console.log('Client ID:', githubId ? `${githubId.slice(0, 5)}...` : 'Not set');
-    console.log('Client Secret:', githubSecret ? 'Set (hidden)' : 'Not set');
-    
-    // Check if OAuth prefixed variables are set
-    console.log('\nOAuth Prefixed Variables:');
-    console.log('----------------------');
-    console.log('OAUTH_GITHUB_CLIENT_ID:', Deno.env.get("OAUTH_GITHUB_CLIENT_ID") ? 'Set' : 'Not set');
-    console.log('OAUTH_GITHUB_CLIENT_SECRET:', Deno.env.get("OAUTH_GITHUB_CLIENT_SECRET") ? 'Set' : 'Not set');
-    
-  } catch (error) {
-    console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');
-    Deno.exit(1);
+interface AuthResponse {
+  success: boolean;
+  status: number;
+  error?: string;
+}
+
+async function initiateDeviceFlow(): Promise<{
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  expires_in: number;
+  interval: number;
+}> {
+  const response = await fetch('https://github.com/login/device/code', {
+    method: 'POST',
+    headers: { 
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      client_id: GITHUB_CLIENT_ID,
+      scope: 'read:user user:email'
+    }).toString()
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Error initiating device flow: ${errorText}`);
+  }
+
+  return await response.json();
+}
+
+async function pollForToken(deviceCode: string, interval: number): Promise<{
+  access_token: string;
+  token_type: string;
+  scope: string;
+}> {
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, interval * 1000));
+
+    const response = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { 
+        'Accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        client_id: GITHUB_CLIENT_ID,
+        device_code: deviceCode,
+        grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+      }).toString()
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      if (errorText.includes('authorization_pending')) {
+        continue;
+      }
+      throw new Error(`Error polling for token: ${errorText}`);
+    }
+
+    try {
+      const data = await response.json();
+      if (data.error) {
+        if (data.error === 'authorization_pending' || 
+            data.error === 'slow_down') {
+          continue;
+        }
+        throw new Error(data.error_description || data.error);
+      }
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Failed to parse response from GitHub');
+    }
   }
 }
 
-await main();
+// Update makeAuthRequest to include the access token
+async function makeAuthRequest(
+  endpoint: string,
+  method: 'GET' | 'POST' = 'GET',
+  data?: Record<string, unknown>
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    'Accept': 'application/json',
+    'User-Agent': 'CyberClock-CLI/1.0',
+  };
+
+  if (accessToken) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  const url = new URL(`${BASE_URL}/api/v1${endpoint}`);
+
+  const options: RequestInit = {
+    method,
+    headers,
+  };
+
+  if (data) {
+    headers['Content-Type'] = 'application/json';
+    options.body = JSON.stringify(data);
+  }
+
+  return await fetch(url.toString(), options);
+}
+
+function showMainMenu() {
+  console.log('\n🌐 Cyber Framework CLI');
+  console.log('====================');
+  console.log('Available APIs:');
+  console.log('1. Counter');
+  console.log('2. Sign out');
+  console.log('0. Exit');
+}
+
+async function handleCounter() {
+  while (true) {
+    const response = await makeAuthRequest('/counter');
+    if (!response.ok) {
+      console.error('Failed to fetch counter');
+      return;
+    }
+    const { count } = await response.json();
+    
+    console.log('\n⚡ Counter API');
+    console.log('============');
+    console.log('Current count:', count);
+    console.log('\nOperations:');
+    console.log('1. Increment');
+    console.log('2. Decrement');
+    console.log('0. Back to main menu');
+
+    const choice = prompt('\nSelect operation (0-2): ');
+
+    switch (choice) {
+      case '1': {
+        const response = await makeAuthRequest('/counter/increment', 'POST');
+        if (response.ok) {
+          const { count } = await response.json();
+          console.log('Counter incremented. New value:', count);
+        }
+        break;
+      }
+      case '2': {
+        const response = await makeAuthRequest('/counter/decrement', 'POST');
+        if (response.ok) {
+          const { count } = await response.json();
+          console.log('Counter decremented. New value:', count);
+        }
+        break;
+      }
+      case '0':
+        return;
+      default:
+        console.log('Invalid selection. Please try again.');
+    }
+  }
+}
+
+async function handleSignOut(): Promise<boolean> {
+  try {
+    const response = await makeAuthRequest('/auth/signout', 'POST');
+    const data = await response.json() as AuthResponse;
+    if (data.success) {
+      console.log('✅ Signed out successfully');
+      return true;
+    } else {
+      console.log('❌ Sign out failed');
+      return false;
+    }
+  } catch (error) {
+    console.error('Error:', error instanceof Error ? error.message : 'An unknown error occurred');
+    return false;
+  }
+}
+
+async function main() {
+  while (true) {
+    if (!isAuthenticated) {
+      try {
+        console.log('Initiating device authorization flow with GitHub...');
+        const deviceData = await initiateDeviceFlow();
+
+        console.log('\n🔑 Authentication Required');
+        console.log('=========================');
+        console.log('1. Open this URL in your browser:');
+        console.log(`   ${deviceData.verification_uri}`);
+        console.log(`2. Enter the code: ${deviceData.user_code}`);
+        console.log('3. Authorize the application');
+        console.log('Waiting for authorization...');
+
+        const tokenData = await pollForToken(deviceData.device_code, deviceData.interval);
+        accessToken = tokenData.access_token;
+
+        const userResponse = await fetch('https://api.github.com/user', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (!userResponse.ok) {
+          throw new Error(`Failed to fetch user data: ${userResponse.statusText}`);
+        }
+
+        const userData = await userResponse.json();
+        console.log(`Welcome, ${userData.login}!`);
+        isAuthenticated = true;
+      } catch (error) {
+        console.error('Authentication error:', error instanceof Error ? error.message : 'Unknown error');
+        Deno.exit(1);
+      }
+      continue;
+    }
+
+    showMainMenu();
+    const choice = prompt('\nSelect API (0-2): ');
+
+    switch (choice) {
+      case '1': {
+        await handleCounter();
+        break;
+      }
+      case '2': {
+        if (await handleSignOut()) {
+          isAuthenticated = false;
+          accessToken = undefined;
+        }
+        break;
+      }
+      case '0': {
+        console.log('Goodbye! 👋');
+        Deno.exit(0);
+        break;
+      }
+      default: {
+        console.log('Invalid selection. Please try again.');
+        break;
+      }
+    }
+  }
+}
+
+// Start the program
+if (import.meta.main) {
+  main().catch(console.error);
+}

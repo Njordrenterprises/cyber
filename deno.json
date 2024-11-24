@@ -3,7 +3,9 @@
     "dev": "deno run --watch --allow-net --allow-read --allow-env --unstable-kv main.ts",
     "start": "deno run --allow-net --allow-read --allow-env --unstable-kv main.ts",
     "cli": "deno run --allow-net --allow-read --allow-env --unstable-kv app/cli.ts",
-    "cli:dev": "deno run --watch --allow-net --allow-read --allow-env --unstable-kv app/cli.ts"
+    "cli:dev": "deno run --watch --allow-net --allow-read --allow-env --unstable-kv app/cli.ts",
+    "cli2": "deno run --allow-net app/cli2.ts",
+    "cli2:dev": "deno run --watch --allow-net app/cli2.ts"
   },
   "compilerOptions": {
     "strict": true,

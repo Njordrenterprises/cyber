@@ -278,3 +278,16 @@ Contributions are welcome! Please follow these guidelines:
 ## License
 
 This project is licensed under the MIT License.
+
+## Environment Setup
+
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Update `.env` with your credentials (never commit this file)
+
+3. Register OAuth applications:
+   - GitHub: https://github.com/settings/applications/new
+   - Google: https://console.cloud.google.com/apis/credentials
