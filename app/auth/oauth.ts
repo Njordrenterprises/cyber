@@ -21,12 +21,27 @@ const providers: Record<string, OAuth2ClientConfig> = {
 export async function handleSignIn(provider: string, request: Request): Promise<Response> {
   const config = providers[provider];
   if (!config) {
+    console.error(`Invalid provider: ${provider}`);
     return new Response('Invalid provider', { status: 400 });
   }
 
-  console.log(`Signing in with ${provider}, Client ID:`, Deno.env.get(`OAUTH_${provider.toUpperCase()}_CLIENT_ID`));
+  const clientId = Deno.env.get(`OAUTH_${provider.toUpperCase()}_CLIENT_ID`);
+  const clientSecret = Deno.env.get(`OAUTH_${provider.toUpperCase()}_CLIENT_SECRET`);
 
-  return await kvoSignIn(request, config);
+  console.log(`Signing in with ${provider}:`, {
+    clientId: clientId ? 'present' : 'missing',
+    clientSecret: clientSecret ? 'present' : 'missing',
+    redirectUri: config.redirectUri
+  });
+
+  try {
+    return await kvoSignIn(request, config);
+  } catch (error: unknown) {
+    console.error(`${provider} sign-in error:`, error);
+    return new Response(`Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
+      status: 500 
+    });
+  }
 }
 
 // Wrap handleCallback to handle the response
@@ -37,27 +52,46 @@ export async function handleOAuthCallback(provider: string, request: Request): P
   }
 
   try {
+    console.log(`Processing ${provider} callback...`);
     const { response, sessionId, tokens } = await kvoHandleCallback(request, config);
     
+    // Log the tokens (but never in production!)
+    console.log('Received tokens:', {
+      accessToken: tokens.accessToken ? 'present' : 'missing',
+      tokenType: tokens.tokenType,
+    });
+
     // Get user info from the OAuth provider
-    const userResponse = await fetch(
-      provider === 'github' 
-        ? 'https://api.github.com/user'
-        : 'https://www.googleapis.com/oauth2/v2/userinfo',
-      {
-        headers: {
-          'Authorization': `Bearer ${tokens.accessToken}`,
-          'Accept': 'application/json',
-        },
-      }
-    );
+    const userInfoUrl = provider === 'github' 
+      ? 'https://api.github.com/user'
+      : 'https://www.googleapis.com/oauth2/v2/userinfo';
+    
+    console.log(`Fetching user info from: ${userInfoUrl}`);
+    
+    const userResponse = await fetch(userInfoUrl, {
+      headers: {
+        'Authorization': `Bearer ${tokens.accessToken}`,
+        'Accept': 'application/json',
+      },
+    });
 
     if (!userResponse.ok) {
-      throw new Error('Failed to fetch user data');
+      const errorText = await userResponse.text();
+      console.error('User info fetch failed:', {
+        status: userResponse.status,
+        statusText: userResponse.statusText,
+        body: errorText
+      });
+      throw new Error(`Failed to fetch user data: ${userResponse.status} ${errorText}`);
     }
 
     const userData = await userResponse.json();
-    
+    console.log('User data received:', {
+      id: userData.id || userData.sub,
+      name: userData.name || userData.login,
+      provider
+    });
+
     // Create user object
     const user: User = {
       id: provider === 'github' ? userData.id.toString() : userData.sub,
@@ -65,9 +99,10 @@ export async function handleOAuthCallback(provider: string, request: Request): P
       email: userData.email || '',
       provider,
       providerId: provider === 'github' ? userData.id.toString() : userData.sub,
+      avatarUrl: userData.avatar_url || userData.picture || '',
     };
 
-    // Store session in KV
+    // Store session in KV with proper expiration
     await kv.set(['sessions', sessionId], {
       user,
       created: Date.now(),
@@ -77,10 +112,15 @@ export async function handleOAuthCallback(provider: string, request: Request): P
     // Store or update user
     await storeOrUpdateUser(user);
 
+    console.log('Authentication successful, redirecting...');
     return response;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('OAuth callback error:', error);
-    return new Response('Authentication failed', { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return new Response(`Authentication failed: ${errorMessage}`, { 
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' }
+    });
   }
 }
 

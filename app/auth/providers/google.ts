@@ -34,6 +34,7 @@ export const deviceConfig = {
 export const google = createGoogleOAuthConfig({
   redirectUri: "https://cyberclock.ca/auth/google/callback",
   scope: [
+    "openid",
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email"
   ]
