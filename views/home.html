@@ -15,8 +15,8 @@
   <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </head>
 <body class="circuit-board">
-  <div class="cyberpunk-nav">
-    <!-- Nav will be injected here -->
+  <div id="nav-container" hx-get="/components/nav" hx-trigger="load">
+    <!-- Nav will be loaded here -->
   </div>
   
   <main class="container">

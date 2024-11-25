@@ -6,6 +6,10 @@ import { handleAuthRequest } from './api/v1/auth.ts';
 import { initiateGoogleDeviceFlowHandler, pollGoogleTokenHandler } from './auth/deviceFlow.ts';
 import { getSessionId } from '@deno/kv-oauth';
 import { handleOAuthCallback as _handleOAuthCallback } from './auth/oauth.ts';
+import { renderNav } from './components/Nav/nav.ts';
+import type { Session } from './types.ts';
+
+const kv = await Deno.openKv();
 
 function renderFullPage(content: string) {
   return `<!DOCTYPE html>
@@ -151,6 +155,47 @@ export async function handleRequest(req: Request): Promise<Response> {
 
     case '/components/counter/ws': {
       return await handleCounter(req);
+    }
+
+    case '/components/nav': {
+      const sessionId = await getSessionId(req);
+      if (!sessionId) {
+        return new Response(renderNav(), {
+          headers: { 'Content-Type': 'text/html' },
+        });
+      }
+
+      const session = await kv.get<Session>(['sessions', sessionId]);
+      if (!session.value?.user) {
+        return new Response(renderNav(), {
+          headers: { 'Content-Type': 'text/html' },
+        });
+      }
+
+      return new Response(renderNav(session.value.user), {
+        headers: { 'Content-Type': 'text/html' },
+      });
+    }
+
+    case '/auth/logout': {
+      const response = new Response(null, {
+        status: 302,
+        headers: { 
+          'Location': '/login',
+          'Set-Cookie': [
+            'session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax',
+            'oauth-state=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax'
+          ].join(', ')
+        }
+      });
+      
+      // Clear the session from KV if it exists
+      const sessionId = await getSessionId(req);
+      if (sessionId) {
+        await kv.delete(['sessions', sessionId]);
+      }
+      
+      return response;
     }
 
     default: {
