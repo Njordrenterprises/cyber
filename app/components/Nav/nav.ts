@@ -1,28 +1,13 @@
 import type { User } from '../../types.ts';
 
 export function renderNav(user: User): string {
-  if (!user) {
-    return `
-      <nav class="cyberpunk-nav">
-        <div class="nav-content">
-          <a href="/" class="nav-brand">CyberClock</a>
-          <div class="nav-links">
-            <a href="/login" class="cyberpunk-button neural">Login</a>
-          </div>
-        </div>
-      </nav>
-    `;
-  }
-
   return `
-    <nav class="cyberpunk-nav">
-      <div class="nav-content">
-        <a href="/" class="nav-brand">CyberClock</a>
-        <div class="nav-links">
-          <span class="user-name">${user.name}</span>
-          <a href="/auth/logout" class="cyberpunk-button decrypt">Logout</a>
-        </div>
-      </div>
+    <nav class="navigation">
+      <ul>
+        <li>Welcome, ${user.name}</li>
+        <li><a href="/counter">Counter</a></li>
+        <li><a href="/auth/signout">Sign Out</a></li>
+      </ul>
     </nav>
   `;
 } 

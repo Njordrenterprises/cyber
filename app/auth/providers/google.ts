@@ -1,5 +1,5 @@
 import { createGoogleOAuthConfig } from "@deno/kv-oauth";
-import { load } from "@std/dotenv";
+import { load } from "https://deno.land/std@0.218.2/dotenv/mod.ts";
 
 // Load environment variables
 await load({ export: true });

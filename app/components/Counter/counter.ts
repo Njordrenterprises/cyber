@@ -12,7 +12,7 @@ async function getCount(userId: string): Promise<number> {
 }
 
 // Function to broadcast count to user's sockets
-function broadcastCount(userId: string, count: number) {
+function broadcastCount(userId: string, count: number): void {
   const sockets = userSockets.get(userId);
   if (sockets) {
     const message = JSON.stringify({ count });
@@ -82,7 +82,7 @@ export async function handleDecrement(
 }
 
 // Handle WebSocket connections
-function handleCounterSocket(socket: WebSocket, userId: string) {
+function handleCounterSocket(socket: WebSocket, userId: string): void {
   // Add socket to user's set
   let sockets = userSockets.get(userId);
   if (!sockets) {

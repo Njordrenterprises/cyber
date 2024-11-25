@@ -1,5 +1,5 @@
-import { createGitHubOAuthConfig } from "jsr:@deno/kv-oauth";
-import { load } from "@std/dotenv";
+import { createGitHubOAuthConfig } from "@deno/kv-oauth";
+import { load } from "https://deno.land/std@0.218.2/dotenv/mod.ts";
 
 // Load environment variables
 await load({ export: true });
@@ -15,9 +15,6 @@ if (!clientId || !clientSecret) {
 // Set OAuth-prefixed variables for kv-oauth
 Deno.env.set("OAUTH_GITHUB_CLIENT_ID", clientId);
 Deno.env.set("OAUTH_GITHUB_CLIENT_SECRET", clientSecret);
-
-console.log('OAUTH_GITHUB_CLIENT_ID set to:', Deno.env.get("OAUTH_GITHUB_CLIENT_ID"));
-console.log('OAUTH_GITHUB_CLIENT_SECRET set to:', Deno.env.get("OAUTH_GITHUB_CLIENT_SECRET"));
 
 // Create and export the GitHub OAuth config with only valid properties
 export const github = createGitHubOAuthConfig({

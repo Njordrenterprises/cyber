@@ -8,6 +8,9 @@ import {
 import { github } from "./providers/github.ts";
 import { google } from "./providers/google.ts";
 import { storeOrUpdateUser } from './middleware.ts';
+import type { User } from '../types.ts';
+
+const kv = await Deno.openKv();
 
 const providers: Record<string, OAuth2ClientConfig> = {
   github,
@@ -56,7 +59,7 @@ export async function handleOAuthCallback(provider: string, request: Request): P
     const userData = await userResponse.json();
     
     // Create user object
-    const user = {
+    const user: User = {
       id: provider === 'github' ? userData.id.toString() : userData.sub,
       name: userData.name || userData.login,
       email: userData.email || '',
@@ -65,7 +68,6 @@ export async function handleOAuthCallback(provider: string, request: Request): P
     };
 
     // Store session in KV
-    const kv = await Deno.openKv();
     await kv.set(['sessions', sessionId], {
       user,
       created: Date.now(),

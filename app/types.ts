@@ -12,11 +12,14 @@ export interface User {
   avatarUrl?: string;
   created?: number;
   lastLogin?: number;
+  provider: string;
+  providerId: string;
 }
 
 export interface Session {
   user: User;
-  timestamp: number;
+  created: number;
+  expires: number;
 }
 
 export interface Context {

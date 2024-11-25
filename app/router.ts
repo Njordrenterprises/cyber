@@ -22,15 +22,17 @@ export async function handleRequest(req: Request): Promise<Response> {
     // Handle static files and public routes
     if (path.startsWith('/styles/') || path.startsWith('/components/')) {
       try {
-        const file = await Deno.readFile(`.${path}`);
-        const contentType = path.endsWith('.css') ? 'text/css' : 'text/plain';
+        const file = await Deno.readFile(`./app${path}`);
+        const extension = path.split('.').pop();
+        const contentType = extension === 'css' ? 'text/css' : 'text/plain';
         return new Response(file, {
           headers: { 
             'Content-Type': contentType,
             'Cache-Control': 'public, max-age=3600',
           },
         });
-      } catch {
+      } catch (error) {
+        console.error(`Error serving static file ${path}:`, error);
         return new Response('Not Found', { status: 404 });
       }
     }

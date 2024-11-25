@@ -25,7 +25,7 @@ export async function authMiddleware(ctx: Context): Promise<void | Response> {
     
     if (session.value) {
       // Check if session is expired
-      if (session.value.timestamp + (7 * 24 * 60 * 60 * 1000) < Date.now()) {
+      if (session.value.expires < Date.now()) {
         await kv.delete(['sessions', sessionId]);
         return new Response('Session expired', { status: 401 });
       }
