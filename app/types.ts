@@ -8,23 +8,22 @@ export interface AuthResponse {
 export interface User {
   id: string;
   name: string;
-  email: string;
-  provider: string;
-  providerId: string;
+  email?: string;
+  avatarUrl?: string;
   created?: number;
   lastLogin?: number;
 }
 
 export interface Session {
-  userId: string;
-  timestamp: number;
   user: User;
+  timestamp: number;
 }
 
 export interface Context {
   request: Request;
   state: {
     user?: User;
+    [key: string]: unknown;
   };
 }
 

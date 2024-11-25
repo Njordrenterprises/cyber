@@ -1,32 +1,22 @@
-export function renderLoginPage() {
-  return `
-    <div class="cyberpunk-background neon-grid">
-      <div class="container">
-        <header class="cyberpunk-header">
-          <h1 class="cyberpunk-header-glitch">CyberClock</h1>
-          <p class="cyberpunk-header-neon">Secure Authentication Required</p>
-        </header>
-        
-        <div class="cyberpunk-cards-container cards-1">
-          <div class="cyberpunk-card neon">
-            <div class="cyberpunk-card-content">
-              <h2 class="cyberpunk-card-title">Choose Your Auth Provider</h2>
-              <div class="auth-controls">
-                <a 
-                  href="/auth/github/signin"
-                  class="cyberpunk-button hacker">
-                  <span class="button-text">Login with GitHub</span>
-                </a>
-                <a 
-                  href="/auth/google/signin"
-                  class="cyberpunk-button neural">
-                  <span class="button-text">Login with Google</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+export function renderLoginPage(): Response {
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Login</title>
+      <link rel="stylesheet" href="/styles/login.css">
+    </head>
+    <body>
+      <h1>Login Page</h1>
+      <a href="/auth/github">Login with GitHub</a>
+      <a href="/auth/google">Login with Google</a>
+    </body>
+    </html>
   `;
+
+  return new Response(htmlContent, {
+    headers: { 'Content-Type': 'text/html' },
+  });
 } 

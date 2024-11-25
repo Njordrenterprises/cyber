@@ -1,60 +1,33 @@
 import { authMiddleware } from './auth/middleware.ts';
 import { renderLoginPage } from './components/auth/login.ts';
-import { handleCounter, handleIncrement, handleDecrement } from './components/Counter/counter.ts';
-import { getCounter, incrementCounter, decrementCounter } from './api/v1/counter.ts';
+import {
+  handleCounter,
+  handleIncrement,
+  handleDecrement,
+} from './components/Counter/counter.ts';
 import { handleAuthRequest } from './api/v1/auth.ts';
-import { initiateGoogleDeviceFlowHandler, pollGoogleTokenHandler } from './auth/deviceFlow.ts';
-import { getSessionId } from '@deno/kv-oauth';
-import { handleOAuthCallback as _handleOAuthCallback } from './auth/oauth.ts';
 import { renderNav } from './components/Nav/nav.ts';
-import type { Session } from './types.ts';
-
-const kv = await Deno.openKv();
-
-function renderFullPage(content: string) {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CyberClock - Login</title>
-  <link rel="stylesheet" href="/styles/global/reset.css">
-  <link rel="stylesheet" href="/styles/global/variables.css">
-  <link rel="stylesheet" href="/styles/components/cards.css">
-  <link rel="stylesheet" href="/styles/components/buttons.css">
-  <link rel="stylesheet" href="/styles/components/headers.css">
-  <link rel="stylesheet" href="/styles/components/backgrounds.css">
-  <link rel="stylesheet" href="/components/auth/login.css">
-  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
-  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-</head>
-<body class="circuit-board">
-  ${content}
-</body>
-</html>`;
-}
+import type { Context, User } from './types.ts';
 
 export async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
 
-  // Allow unauthenticated access to certain paths
+  // Publicly accessible routes
   if (
     path.startsWith('/styles/') ||
-    path.startsWith('/components/') ||
     path.startsWith('/auth/') ||
-    path === '/login' ||
-    path.startsWith('/api/auth/')
+    path === '/login'
   ) {
-    // Handle static files and public API endpoints
+    // Handle static files and public routes
     if (path.startsWith('/styles/') || path.startsWith('/components/')) {
       try {
-        const file = await Deno.readFile(`./app${path}`);
+        const file = await Deno.readFile(`.${path}`);
         const contentType = path.endsWith('.css') ? 'text/css' : 'text/plain';
         return new Response(file, {
           headers: { 
             'Content-Type': contentType,
-            'Cache-Control': 'public, max-age=3600'
+            'Cache-Control': 'public, max-age=3600',
           },
         });
       } catch {
@@ -62,144 +35,69 @@ export async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
-    // Handle device flow endpoints for Google
-    if (path === '/api/auth/google/device') {
-      return await initiateGoogleDeviceFlowHandler(req);
-    }
-    if (path === '/api/auth/google/token') {
-      return await pollGoogleTokenHandler(req);
-    }
-
-    // Handle regular OAuth flow
-    if (path.startsWith('/auth/')) {
-      const segments = path.split('/');
-      const provider = segments[2];
-      const action = segments[3];
-
-      if (['github', 'google'].includes(provider)) {
-        return await handleAuthRequest(req, provider, action);
-      }
-    }
-
-    // Serve login page
     if (path === '/login') {
-      return new Response(renderFullPage(renderLoginPage()), {
-        headers: { 'Content-Type': 'text/html' },
-      });
+      return renderLoginPage();
     }
 
-    // If no route matches, return 404
-    return new Response('Not Found', { status: 404 });
-  }
+    if (path.startsWith('/auth/')) {
+      // Extract provider and action from the path
+      const parts = path.split('/');
+      const provider = parts[2];
+      const action = parts[3] || 'initiate';
 
-  // Check authentication for all other routes
-  const sessionId = await getSessionId(req);
-  if (!sessionId) {
-    return new Response(null, {
-      status: 302,
-      headers: { Location: '/login' },
-    });
-  }
-
-  // Apply auth middleware for authenticated routes
-  const ctx = {
-    request: req,
-    state: {},
-  };
-  await authMiddleware(ctx);
-
-  // Handle authenticated routes
-  switch (path) {
-    case '/': {
-      // Serve home page
-      const html = await Deno.readFile('./views/home.html');
-      return new Response(new TextDecoder().decode(html), {
-        headers: { 'Content-Type': 'text/html' },
-      });
+      return await handleAuthRequest(req, provider, action);
     }
 
-    case '/api/v1/counter': {
+    // Add more public route handlers as needed
+  }
+
+  // Protect private routes with authentication middleware
+  const ctx: Context = { request: req, state: {} };
+  const authResponse = await authMiddleware(ctx);
+  if (authResponse instanceof Response) {
+    return authResponse;
+  }
+
+  const user = ctx.state.user as User;
+
+  // Handle protected routes
+  switch (true) {
+    case path === '/':
+      return new Response(`
+        <div id="nav-container" hx-get="/components/nav" hx-trigger="load">
+          <!-- Nav will be loaded here -->
+        </div>
+        <main class="container">
+          <!-- Main content here -->
+        </main>
+      `, {
+        headers: { 'Content-Type': 'text/html' },
+      });
+
+    case path === '/counter':
       if (req.method === 'GET') {
-        return await getCounter(req);
-      }
-      return new Response('Method Not Allowed', { status: 405 });
-    }
-
-    case '/api/v1/counter/increment': {
-      if (req.method === 'POST') {
-        return await incrementCounter(req);
-      }
-      return new Response('Method Not Allowed', { status: 405 });
-    }
-
-    case '/api/v1/counter/decrement': {
-      if (req.method === 'POST') {
-        return await decrementCounter(req);
-      }
-      return new Response('Method Not Allowed', { status: 405 });
-    }
-
-    case '/components/counter/increment': {
-      if (req.method === 'POST') {
-        return await handleIncrement(req);
-      }
-      return new Response('Method Not Allowed', { status: 405 });
-    }
-
-    case '/components/counter/decrement': {
-      if (req.method === 'POST') {
-        return await handleDecrement(req);
-      }
-      return new Response('Method Not Allowed', { status: 405 });
-    }
-
-    case '/components/counter/ws': {
-      return await handleCounter(req);
-    }
-
-    case '/components/nav': {
-      const sessionId = await getSessionId(req);
-      if (!sessionId) {
-        return new Response(renderNav(), {
-          headers: { 'Content-Type': 'text/html' },
-        });
-      }
-
-      const session = await kv.get<Session>(['sessions', sessionId]);
-      if (!session.value?.user) {
-        return new Response(renderNav(), {
-          headers: { 'Content-Type': 'text/html' },
-        });
-      }
-
-      return new Response(renderNav(session.value.user), {
-        headers: { 'Content-Type': 'text/html' },
-      });
-    }
-
-    case '/auth/logout': {
-      const response = new Response(null, {
-        status: 302,
-        headers: { 
-          'Location': '/login',
-          'Set-Cookie': [
-            'session=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax',
-            'oauth-state=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax'
-          ].join(', ')
+        return handleCounter(req, user);
+      } else if (req.method === 'POST') {
+        const action = new URL(req.url).searchParams.get('action');
+        if (action === 'increment') {
+          return await handleIncrement(req, user);
+        } else if (action === 'decrement') {
+          return await handleDecrement(req, user);
         }
-      });
-      
-      // Clear the session from KV if it exists
-      const sessionId = await getSessionId(req);
-      if (sessionId) {
-        await kv.delete(['sessions', sessionId]);
       }
-      
-      return response;
-    }
+      return new Response('Method Not Allowed', { status: 405 });
 
-    default: {
+    // Add more protected route handlers as needed
+
+    default:
       return new Response('Not Found', { status: 404 });
-    }
   }
+}
+
+// Helper function to render the navigation component
+export function renderNavComponent(user: User): Response {
+  const navHtml = renderNav(user);
+  return new Response(navHtml, {
+    headers: { 'Content-Type': 'text/html' },
+  });
 } 

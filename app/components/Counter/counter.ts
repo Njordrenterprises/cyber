@@ -1,8 +1,9 @@
-import { authMiddleware } from '../../auth/middleware.ts';
-import type { Context, CounterData } from '../../types.ts';
+import type { CounterData, User } from '../../types.ts';
 
-// Initialize KV store
 const kv = await Deno.openKv();
+
+// Map to store WebSocket connections per user
+const userSockets = new Map<string, Set<WebSocket>>();
 
 // Get current count from KV store
 async function getCount(userId: string): Promise<number> {
@@ -10,29 +11,16 @@ async function getCount(userId: string): Promise<number> {
   return result.value?.count ?? 0;
 }
 
-// WebSocket handler for counter updates
-async function handleCounterSocket(socket: WebSocket, userId: string) {
-  const stream = kv.watch([['counters', userId]]);
-  
-  try {
-    const initialCount = await getCount(userId);
-    socket.send(JSON.stringify({ count: initialCount }));
-
-    for await (const [entry] of stream) {
-      if (socket.readyState !== WebSocket.OPEN) break;
-      
-      if (!entry?.value) continue;
-      const value = entry.value as CounterData;
-      
-      socket.send(JSON.stringify({ 
-        count: value.count,
-        timestamp: value.lastUpdated
-      }));
+// Function to broadcast count to user's sockets
+function broadcastCount(userId: string, count: number) {
+  const sockets = userSockets.get(userId);
+  if (sockets) {
+    const message = JSON.stringify({ count });
+    for (const socket of sockets) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(message);
+      }
     }
-  } catch (error) {
-    console.error('WebSocket stream error:', error);
-  } finally {
-    stream.cancel();
   }
 }
 
@@ -42,22 +30,14 @@ function renderCounterDisplay(count: number): string {
 }
 
 // Handle increment action and return HTML snippet
-export async function handleIncrement(req: Request): Promise<Response> {
-  const ctx: Context = { request: req, state: {} };
-  const authResult = await authMiddleware(ctx);
-
-  if (authResult instanceof Response) {
-    return authResult;
-  }
-
-  const userId = ctx.state.user?.id;
-  if (!userId) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+export async function handleIncrement(
+  _req: Request,
+  user: User,
+): Promise<Response> {
+  const userId = user.id;
 
   const result = await kv.get<CounterData>(['counters', userId]);
   const currentCount = result.value?.count ?? 0;
-
   const newCount = currentCount + 1;
 
   await kv.set(['counters', userId], {
@@ -66,6 +46,9 @@ export async function handleIncrement(req: Request): Promise<Response> {
     lastUpdated: Date.now(),
   });
 
+  // Broadcast the new count to connected sockets
+  broadcastCount(userId, newCount);
+
   // Return the updated counter value as HTML
   return new Response(renderCounterDisplay(newCount), {
     headers: { 'Content-Type': 'text/html' },
@@ -73,22 +56,14 @@ export async function handleIncrement(req: Request): Promise<Response> {
 }
 
 // Handle decrement action and return HTML snippet
-export async function handleDecrement(req: Request): Promise<Response> {
-  const ctx: Context = { request: req, state: {} };
-  const authResult = await authMiddleware(ctx);
-
-  if (authResult instanceof Response) {
-    return authResult;
-  }
-
-  const userId = ctx.state.user?.id;
-  if (!userId) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+export async function handleDecrement(
+  _req: Request,
+  user: User,
+): Promise<Response> {
+  const userId = user.id;
 
   const result = await kv.get<CounterData>(['counters', userId]);
   const currentCount = result.value?.count ?? 0;
-
   const newCount = Math.max(0, currentCount - 1);
 
   await kv.set(['counters', userId], {
@@ -97,45 +72,55 @@ export async function handleDecrement(req: Request): Promise<Response> {
     lastUpdated: Date.now(),
   });
 
+  // Broadcast the new count to connected sockets
+  broadcastCount(userId, newCount);
+
   // Return the updated counter value as HTML
   return new Response(renderCounterDisplay(newCount), {
     headers: { 'Content-Type': 'text/html' },
   });
 }
 
+// Handle WebSocket connections
+function handleCounterSocket(socket: WebSocket, userId: string) {
+  // Add socket to user's set
+  let sockets = userSockets.get(userId);
+  if (!sockets) {
+    sockets = new Set();
+    userSockets.set(userId, sockets);
+  }
+  sockets.add(socket);
+
+  socket.onclose = () => {
+    sockets!.delete(socket);
+    if (sockets!.size === 0) {
+      userSockets.delete(userId);
+    }
+  };
+
+  socket.onerror = (err) => {
+    console.error('WebSocket error:', err);
+    socket.close();
+  };
+
+  // Send initial count
+  getCount(userId).then((count) => {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ count }));
+    }
+  });
+}
+
 // Handle component requests
-export async function handleCounter(req: Request): Promise<Response> {
+export function handleCounter(req: Request, user: User): Response {
   const url = new URL(req.url);
-  const ctx: Context = { request: req, state: {} };
-  const authResult = await authMiddleware(ctx);
-  
-  if (authResult instanceof Response) {
-    return authResult;
-  }
 
-  if (!ctx.state.user?.id) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-
-  // Handle WebSocket upgrade requests
   if (url.pathname.endsWith('/ws')) {
     try {
       const { socket, response } = Deno.upgradeWebSocket(req);
-      
+
       socket.onopen = () => {
-        console.log('WebSocket opened for user:', ctx.state.user?.id);
-        handleCounterSocket(socket, ctx.state.user!.id).catch(error => {
-          console.error('Counter socket handler error:', error);
-          socket.close();
-        });
-      };
-
-      socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-
-      socket.onclose = () => {
-        console.log('WebSocket closed');
+        handleCounterSocket(socket, user.id);
       };
 
       return response;
@@ -145,6 +130,5 @@ export async function handleCounter(req: Request): Promise<Response> {
     }
   }
 
-  // Return 404 for non-WebSocket requests
   return new Response('Not Found', { status: 404 });
 } 

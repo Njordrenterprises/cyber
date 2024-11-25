@@ -1,17 +1,12 @@
+import type { User, CounterData } from '../../types.ts';
+
 const kv = await Deno.openKv();
 
-interface CounterData {
-  count: number;
-  userId: string;
-  lastUpdated: number;
-}
-
-// Internal function to get counter value
-async function _getCounter(request: Request): Promise<Response> {
-  const userId = request.headers.get('X-User-ID');
-  if (!userId) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+export async function getCounter(
+  _req: Request,
+  user: User,
+): Promise<Response> {
+  const userId = user.id;
 
   const result = await kv.get<CounterData>(['counters', userId]);
   const count = result.value?.count ?? 0;
@@ -21,41 +16,44 @@ async function _getCounter(request: Request): Promise<Response> {
   });
 }
 
-export async function incrementCounter(request: Request): Promise<Response> {
-  const userId = request.headers.get('X-User-ID');
-  if (!userId) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+export async function incrementCounter(
+  _req: Request,
+  user: User,
+): Promise<Response> {
+  const userId = user.id;
 
   const result = await kv.get<CounterData>(['counters', userId]);
   const currentCount = result.value?.count ?? 0;
-  
+  const newCount = currentCount + 1;
+
   await kv.set(['counters', userId], {
-    count: currentCount + 1,
+    count: newCount,
     userId,
-    lastUpdated: Date.now()
+    lastUpdated: Date.now(),
   });
 
-  return _getCounter(request);
+  return new Response(JSON.stringify({ count: newCount }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
-export async function decrementCounter(request: Request): Promise<Response> {
-  const userId = request.headers.get('X-User-ID');
-  if (!userId) {
-    return new Response('Unauthorized', { status: 401 });
-  }
+export async function decrementCounter(
+  _req: Request,
+  user: User,
+): Promise<Response> {
+  const userId = user.id;
 
   const result = await kv.get<CounterData>(['counters', userId]);
   const currentCount = result.value?.count ?? 0;
-  
+  const newCount = Math.max(0, currentCount - 1);
+
   await kv.set(['counters', userId], {
-    count: Math.max(0, currentCount - 1),
+    count: newCount,
     userId,
-    lastUpdated: Date.now()
+    lastUpdated: Date.now(),
   });
 
-  return _getCounter(request);
-}
-
-// Re-export getCounter for router use
-export { _getCounter as getCounter }; 
+  return new Response(JSON.stringify({ count: newCount }), {
+    headers: { 'Content-Type': 'application/json' },
+  });
+} 

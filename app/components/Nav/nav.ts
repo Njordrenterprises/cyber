@@ -1,6 +1,6 @@
 import type { User } from '../../types.ts';
 
-export function renderNav(user?: User): string {
+export function renderNav(user: User): string {
   if (!user) {
     return `
       <nav class="cyberpunk-nav">
